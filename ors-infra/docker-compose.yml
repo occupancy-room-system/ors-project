@@ -1,0 +1,16 @@
+services:
+  ors-db:
+    image: mysql:latest
+    container_name: ors-db
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ors2026
+      MYSQL_DATABASE: orsdb
+    volumes:
+      - occupancy_mysql_data:/var/lib/mysql
+
+volumes:
+  occupancy_mysql_data:
+    external: true
