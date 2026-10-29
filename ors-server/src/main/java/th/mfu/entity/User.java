@@ -14,10 +14,10 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, unique = true, length = 100)
     private String username;
 
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, unique = true, length = 150)
     private String email;
 
     @Column(nullable = false)
@@ -29,6 +29,9 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role = Role.ROLE_USER;
+
+    @Column(name = "account_status", length = 20)
+    private String accountStatus = "ACTIVE";
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -45,6 +48,7 @@ public class User {
         this.password = password;
         this.fullName = fullName;
         this.role = (role != null) ? role : Role.ROLE_USER;
+        this.accountStatus = "ACTIVE";
     }
 
     @PrePersist
@@ -53,6 +57,9 @@ public class User {
         this.updatedAt = LocalDateTime.now();
         if (this.role == null) {
             this.role = Role.ROLE_USER;
+        }
+        if (this.accountStatus == null) {
+            this.accountStatus = "ACTIVE";
         }
     }
 
@@ -108,6 +115,14 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public String getAccountStatus() {
+        return accountStatus;
+    }
+
+    public void setAccountStatus(String accountStatus) {
+        this.accountStatus = accountStatus;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -66,6 +66,7 @@ else
     docker volume create occupancy_mysql_data >/dev/null 2>&1 || true
 
     echo -e "${BLUE}[INFO] Creating and launching new 'ors-db' container...${NC}"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     docker run -d \
         --name ors-db \
         --restart unless-stopped \
@@ -73,6 +74,7 @@ else
         -e MYSQL_ROOT_PASSWORD=ors2026 \
         -e MYSQL_DATABASE=orsdb \
         -v occupancy_mysql_data:/var/lib/mysql \
+        -v "$SCRIPT_DIR/init":/docker-entrypoint-initdb.d:ro \
         mysql:latest
 fi
 

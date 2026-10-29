@@ -10,6 +10,7 @@ services:
       MYSQL_DATABASE: orsdb
     volumes:
       - occupancy_mysql_data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d:ro
 
 volumes:
   occupancy_mysql_data:
