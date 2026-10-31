@@ -2,6 +2,9 @@
 
 A modern, full-stack, enterprise-grade laboratory workstation occupancy and reservation system designed for University Software Engineering Laboratories. Students can check real-time seat occupancy from home or mobile before commuting, make short-advance reservations, scan physical desk QR codes on arrival to activate sessions, and manage their working hours. Laboratory administrators have access to live analytics, peak utilization graphs, usage telemetry over selectable date ranges, seat maintenance overrides, and printable QR sticker sheets.
 
+> 📖 **Team Member Setup & Instructions:**  
+> For the complete step-by-step setup guide, see the [**`instructions/`**](./instructions/README.md) folder or the all-in-one [**Complete Setup Guide**](./instructions/COMPLETE_SETUP_GUIDE.md).
+
 ---
 
 ## 1. Project Architecture
@@ -10,6 +13,7 @@ The project is structured into three decoupled, production-ready modules:
 
 ```
 Sec_Project/
+├── instructions/     # Comprehensive step-by-step guide for team members (setup, run, test)
 ├── ors-infra/        # Docker Compose infrastructure (MySQL 8 on port 3307, persistent volume, init scripts)
 ├── ors-server/       # Spring Boot 3.x / Java 21 REST API backend (th.mfu)
 ├── ors-frontend/     # Next.js 16 (App Router) + React 19 + Tailwind CSS frontend
