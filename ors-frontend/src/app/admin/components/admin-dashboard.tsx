@@ -18,8 +18,8 @@ import {
   OccupancyMapResponse,
   UsageDashboardData,
   UsageInterval,
-} from "../../types";
-import { ApiClient } from "../../lib/api-client";
+} from "@/types";
+import { adminService } from "@/services";
 
 interface AdminDashboardProps {
   roomData: OccupancyMapResponse | null;
@@ -64,8 +64,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Load real-time analytics & QR codes
   useEffect(() => {
-    ApiClient.getAnalytics().then(setAnalytics).catch(console.error);
-    ApiClient.getAllQRCodes().then(setQrList).catch(console.error);
+    adminService.getAnalytics().then(setAnalytics).catch(console.error);
+    adminService.getAllQRCodes().then(setQrList).catch(console.error);
   }, []);
 
   // Fetch Usage Metrics from server
@@ -73,7 +73,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     async (intVal: UsageInterval, start: string, end: string) => {
       try {
         setUsageLoading(true);
-        const data = await ApiClient.getUsageMetrics({
+        const data = await adminService.getUsageMetrics({
           interval: intVal,
           startDate: start,
           endDate: end,

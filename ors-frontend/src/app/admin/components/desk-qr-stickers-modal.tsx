@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Seat } from '../../types';
-import { ApiClient } from '../../lib/api-client';
+import { Seat } from '@/types';
+import { adminService } from '@/services';
 
 interface DeskQrStickersModalProps {
   isOpen: boolean;
@@ -20,11 +20,11 @@ export const DeskQrStickersModal: React.FC<DeskQrStickersModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    ApiClient.getAllQRCodes()
-      .then((data) => {
+    adminService.getAllQRCodes()
+      .then((data: { seat: Seat; qrDataUrl: string }[]) => {
         setQrList(data);
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.error('Failed to load QR codes:', err);
       })
       .finally(() => {

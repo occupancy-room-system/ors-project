@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Seat, User } from '../../types';
+import { Seat, User } from '@/types';
 
 interface SeatDetailModalProps {
   seat: Seat | null;

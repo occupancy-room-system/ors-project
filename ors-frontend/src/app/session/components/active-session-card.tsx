@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { OccupancySession } from '../../types';
+import { OccupancySession } from '@/types';
 
 interface ActiveSessionCardProps {
   session: OccupancySession | null;

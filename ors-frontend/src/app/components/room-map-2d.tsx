@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Seat, Room } from '../../types';
+import { Seat, Room } from '@/types';
 
 interface RoomMap2DProps {
   room: Room;

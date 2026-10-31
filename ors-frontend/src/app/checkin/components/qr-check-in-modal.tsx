@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import jsQR from 'jsqr';
-import { Seat, User, Reservation } from '../../types';
-import { ApiClient } from '../../lib/api-client';
+import { Seat, User, Reservation } from '@/types';
+import { sessionService, reservationService } from '@/services';
 
 interface QrCheckInModalProps {
   seats: Seat[];
@@ -123,7 +123,7 @@ export const QrCheckInModal: React.FC<QrCheckInModalProps> = ({
     }
     try {
       setLoadingReservations(true);
-      const res = await ApiClient.getUserReservations(currentUser.id);
+      const res = await reservationService.getUserReservations(currentUser.id);
       setMyReservations(res);
     } catch (err: any) {
       console.error('Failed to load reservations:', err);
@@ -308,7 +308,7 @@ export const QrCheckInModal: React.FC<QrCheckInModalProps> = ({
     }
 
     try {
-      const session = await ApiClient.activateSeatWithQr({
+      const session = await sessionService.activateSeatWithQr({
         qrToken: qrToken || targetSeat?.qrToken || '',
         seatCode: targetSeat?.seatCode || resolvedCode,
         userId: currentUser.id,
@@ -594,7 +594,7 @@ export const QrCheckInModal: React.FC<QrCheckInModalProps> = ({
     setSuccessMessage(null);
     setWrongSeatModal(null);
     try {
-      await ApiClient.cancelReservation(reservationId, currentUser.id);
+      await reservationService.cancelReservation(reservationId, currentUser.id);
       setSuccessMessage(`Reservation for ${seatCode} cancelled successfully. The seat has been freed online.`);
       await fetchReservations();
     } catch (err: any) {
