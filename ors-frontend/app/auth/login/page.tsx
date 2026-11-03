@@ -10,35 +10,39 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, ShieldCheck, UserCheck, ArrowLeft } from 'lucide-react';
+import { Lock, Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, GraduationCap, UserCheck, ShieldCheck } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 export default function LoginPage() {
   const router = useRouter();
   const { setCurrentUser, showToast } = useApp();
   const loginMutation = useLoginMutation();
 
-  const [identifier, setIdentifier] = useState('');
+  const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier.trim() || !password) {
-      setErrorMsg('Please enter both your email/username and password.');
+    if (!studentId.trim()) {
+      setErrorMsg('Please enter your Student ID.');
+      return;
+    }
+    if (!password) {
+      setErrorMsg('Please enter your password.');
       return;
     }
 
     setErrorMsg(null);
     try {
       const { user } = await loginMutation.mutateAsync({
-        usernameOrEmail: identifier.trim(),
+        studentId: studentId.trim(),
         password,
       });
 
       setCurrentUser(user);
-      showToast(`Welcome back, ${user.fullName}!`, 'success');
+      showToast(`Welcome back, ${user.fullName || user.username}!`, 'success');
 
       if (user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN') {
         router.push(ROUTES.ADMIN);
@@ -46,20 +50,21 @@ export default function LoginPage() {
         router.push(ROUTES.HOME);
       }
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Invalid credentials. Please try again.');
+      setErrorMsg(err instanceof Error ? err.message : 'Invalid Student ID or password. Please try again.');
     }
   };
 
-  const handleQuickLogin = (email: string, role: string, name: string) => {
+  const handleQuickLogin = (id: string, role: string, name: string) => {
     const user = {
       id: role === 'ADMINISTRATOR' ? 1 : 2,
       fullName: name,
-      email,
+      username: id,
+      email: `${id}@student.university.edu`,
       role: role as any,
       accountStatus: 'ACTIVE' as const,
     };
     setCurrentUser(user);
-    showToast(`Signed in as ${name} (${role})`, 'success');
+    showToast(`Signed in as ${name}`, 'success');
     if (role === 'ADMINISTRATOR') {
       router.push(ROUTES.ADMIN);
     } else {
@@ -68,7 +73,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-muted/20">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-muted/20 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md space-y-6">
         {/* Back Link */}
         <Link
@@ -84,18 +92,18 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary text-primary-foreground font-black text-lg shadow-sm">
             SE
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-foreground">Welcome Back</h1>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">Sign In</h1>
           <p className="text-xs text-muted-foreground">
-            Sign in to access engineering workstations at Turing Hall 101
+            Sign in with your Student ID to access SE lab workstations
           </p>
         </div>
 
         {/* Main Card */}
         <Card className="border-border shadow-xs">
           <CardHeader className="pb-4">
-            <CardTitle className="text-base font-bold">Sign In to Your Account</CardTitle>
+            <CardTitle className="text-base font-bold">Student Sign In</CardTitle>
             <CardDescription className="text-xs">
-              Enter your student credentials or select a quick demo profile.
+              Enter your Student ID and password to proceed.
             </CardDescription>
           </CardHeader>
 
@@ -106,33 +114,34 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-3.5">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Student ID */}
               <div className="space-y-1.5">
-                <Label htmlFor="login-identifier" className="text-xs">
-                  Email or Username
+                <Label htmlFor="login-studentId" className="text-xs font-semibold">
+                  Student ID
                 </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                   <Input
-                    id="login-identifier"
+                    id="login-studentId"
                     type="text"
-                    placeholder="student@university.edu"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="e.g. 6531501001"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value)}
                     className="pl-9 text-xs"
                     disabled={loginMutation.isPending}
+                    autoComplete="username"
+                    autoFocus
                   />
                 </div>
               </div>
 
+              {/* Password */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="login-password" className="text-xs">
+                  <Label htmlFor="login-password" className="text-xs font-semibold">
                     Password
                   </Label>
-                  <Link href="#" className="text-[11px] text-primary hover:underline">
-                    Forgot password?
-                  </Link>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -144,11 +153,12 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-9 pr-9 text-xs"
                     disabled={loginMutation.isPending}
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -158,7 +168,7 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full text-xs font-bold gap-2 h-10 mt-2"
+                className="w-full text-xs font-bold gap-2 h-10 mt-2 cursor-pointer"
                 disabled={loginMutation.isPending}
               >
                 {loginMutation.isPending ? (
@@ -190,18 +200,18 @@ export default function LoginPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => handleQuickLogin('alex.chen@student.university.edu', 'STUDENT', 'Alex Chen')}
-                  className="h-8 text-xs font-semibold gap-1.5"
+                  onClick={() => handleQuickLogin('6531501001', 'STUDENT', 'Alex Chen')}
+                  className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
                 >
                   <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-                  Alex (Student)
+                  Alex (6531501001)
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => handleQuickLogin('admin@university.edu', 'ADMINISTRATOR', 'Prof. Robert Vance')}
-                  className="h-8 text-xs font-semibold gap-1.5"
+                  onClick={() => handleQuickLogin('admin', 'ADMINISTRATOR', 'Prof. Robert Vance')}
+                  className="h-8 text-xs font-semibold gap-1.5 cursor-pointer"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
                   Admin Vance
@@ -212,7 +222,7 @@ export default function LoginPage() {
 
           <CardFooter className="pt-0 justify-center">
             <p className="text-xs text-muted-foreground">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href={ROUTES.REGISTER} className="text-primary font-bold hover:underline">
                 Register here
               </Link>
@@ -223,4 +233,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

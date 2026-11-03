@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { QueryClientWrapper } from '@/providers/queryClient.provider';
+import { ThemeProvider } from '@/providers/theme.provider';
 import { ToastContainer } from '@/components/toast/toast-container';
 import NextTopLoader from 'nextjs-toploader';
 import { AppProvider } from '@/hooks/use-app-store';
@@ -13,8 +14,25 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full antialiased font-sans">
+    <html lang="en" className="h-full antialiased font-sans" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = localStorage.getItem('ors-theme');
+                  var supportDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  if (stored === 'dark' || (!stored && supportDark)) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -24,15 +42,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <NextTopLoader
-          color="#2563eb"
+          color="#4a7cf6"
           showSpinner={false}
-          shadow="0 0 10px #2563eb,0 0 5px #2563eb"
+          shadow="0 0 10px rgba(74,124,246,0.3)"
         />
         <QueryClientWrapper>
-          <AppProvider>
-            {children}
-            <ToastContainer />
-          </AppProvider>
+          <ThemeProvider>
+            <AppProvider>
+              {children}
+              <ToastContainer />
+            </AppProvider>
+          </ThemeProvider>
         </QueryClientWrapper>
       </body>
     </html>

@@ -18,6 +18,23 @@ export function MobileNav() {
 
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
+  if (mounted && (currentUser?.role === 'ADMINISTRATOR' || currentUser?.role === 'ROLE_ADMIN')) {
+    return (
+      <nav
+        aria-label="Mobile Navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-lg border-t border-border px-4 py-2 shadow-lg flex items-center justify-center"
+      >
+        <Link
+          href={ROUTES.ADMIN}
+          className="flex items-center justify-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 py-1"
+        >
+          <ShieldAlert className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <span>Admin Dashboard Console</span>
+        </Link>
+      </nav>
+    );
+  }
+
   return (
     <nav
       aria-label="Mobile Navigation"

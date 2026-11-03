@@ -1,91 +1,74 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { ROUTES } from '@/config/routes';
+import React, { useState } from 'react';
 import { useApp } from '@/hooks/use-app-store';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { QrCode, Clock, Bookmark, Sparkles, Monitor } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 export function LabStatsBanner() {
-  const router = useRouter();
-  const { roomData, activeSession, userReservations, pendingReservationCount } = useApp();
+  const { roomData, loadData } = useApp();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const occupiedCount = roomData.totalSeats - roomData.availableSeats;
-  const occupancyRate = roomData.totalSeats > 0 ? Math.round((occupiedCount / roomData.totalSeats) * 100) : 0;
+  const seats = roomData.seats || [];
+  const total = seats.length || 54;
+  const available = seats.filter((s) => s.status === 'AVAILABLE').length;
+  const inUse = seats.filter((s) => s.status === 'OCCUPIED' || s.status === 'EXPIRING_SOON').length;
+  const endingSoon = seats.filter((s) => s.status === 'EXPIRING_SOON').length;
+  const reserved = seats.filter((s) => s.status === 'RESERVED').length;
+  const repair = seats.filter((s) => s.status === 'MAINTENANCE').length;
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadData();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   return (
-    <div className="bg-card rounded-2xl border border-border/80 p-5 sm:p-6 shadow-xs">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        {/* Left: Occupancy Summary */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <Badge
-              variant="outline"
-              className="gap-1.5 px-2.5 py-1 text-xs font-bold border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Laboratory Occupancy
-            </Badge>
-            <span className="text-xs text-muted-foreground font-medium">
-              Software Engineering Innovation Lab 101
-            </span>
-          </div>
-
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground font-mono">
-              {roomData.availableSeats}
-            </span>
-            <span className="text-xl sm:text-2xl font-light text-muted-foreground">/ {roomData.totalSeats}</span>
-            <span className="text-sm sm:text-base font-bold text-muted-foreground ml-1">Desks Available</span>
-          </div>
-
-          {/* Progress bar */}
-          <div className="space-y-1.5 max-w-md">
-            <div className="flex justify-between text-[11px] text-muted-foreground font-medium">
-              <span>{occupancyRate}% Currently Occupied</span>
-              <span>{roomData.availableSeats} free workstations</span>
-            </div>
-            <Progress value={occupancyRate} className="h-2" />
-          </div>
+    <div className="bg-card rounded-xl border border-border/70 px-4 sm:px-6 py-3.5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Left: Numbers & Breakdown */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs sm:text-sm">
+        <div className="flex items-baseline gap-1.5 font-sans">
+          <span className="text-xl sm:text-2xl font-black text-foreground tracking-tight">{available}</span>
+          <span className="text-muted-foreground font-medium">of {total} desks available</span>
         </div>
 
-        {/* Right: Quick Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <Button
-            onClick={() => router.push(ROUTES.CHECKIN)}
-            className="gap-2 h-10 px-4 text-xs font-bold shadow-xs"
-          >
-            <QrCode className="w-4 h-4" />
-            Scan Desk QR
-          </Button>
+        <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground">
+          {/* In Use */}
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-700 dark:bg-slate-300" />
+            <span className="text-foreground font-semibold">{inUse} in use</span>
+            {endingSoon > 0 && <span className="text-amber-600 dark:text-amber-400">({endingSoon} ending soon)</span>}
+          </div>
 
-          {activeSession && (
-            <Button
-              variant="outline"
-              onClick={() => router.push(ROUTES.SESSION)}
-              className="gap-2 h-10 px-4 text-xs font-semibold border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100"
-            >
-              <Clock className="w-4 h-4 text-emerald-600" />
-              Active Desk ({activeSession.seatCode})
-            </Button>
-          )}
+          {/* Reserved */}
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-xs bg-indigo-600" />
+            <span className="text-foreground font-semibold">{reserved} reserved</span>
+          </div>
 
-          {pendingReservationCount > 0 && !activeSession && (
-            <Button
-              variant="outline"
-              onClick={() => router.push(ROUTES.CHECKIN)}
-              className="gap-2 h-10 px-4 text-xs font-semibold border-indigo-300 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-800 dark:text-indigo-300 hover:bg-indigo-100"
-            >
-              <Bookmark className="w-4 h-4 text-indigo-600" />
-              Reserved ({userReservations[0]?.seatCode})
-            </Button>
-          )}
+          {/* Under Repair */}
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-xs bg-amber-500" />
+            <span className="text-foreground font-semibold">{repair} under repair</span>
+          </div>
         </div>
+      </div>
+
+      {/* Right: Live indicator + Last update + Refresh button */}
+      <div className="flex items-center gap-3 text-xs text-muted-foreground self-end md:self-auto shrink-0">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="font-semibold text-emerald-700 dark:text-emerald-400">Live</span>
+        </div>
+        <span className="text-muted-foreground/80">Updated just now</span>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+          title="Refresh real-time occupancy"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
+        </button>
       </div>
     </div>
   );
 }
-
