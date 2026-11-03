@@ -12,6 +12,8 @@ public class UserUpdateRequest {
 
     private Role role;
 
+    private String password;
+
     public UserUpdateRequest() {
     }
 
@@ -43,5 +45,13 @@ public class UserUpdateRequest {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }

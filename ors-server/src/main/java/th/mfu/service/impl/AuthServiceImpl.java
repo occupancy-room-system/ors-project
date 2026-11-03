@@ -41,20 +41,38 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public UserResponse register(UserRegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
-            throw new BadRequestException("Username '" + request.getUsername() + "' is already taken");
+        String identifier = request.getStudentId();
+        if (identifier == null || identifier.trim().isEmpty()) {
+            identifier = request.getUsername();
+        }
+        if (identifier == null || identifier.trim().isEmpty()) {
+            throw new BadRequestException("Student ID is required");
+        }
+        identifier = identifier.trim();
+
+        if (userRepository.existsByUsername(identifier)) {
+            throw new BadRequestException("Student ID '" + identifier + "' is already registered");
         }
 
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new BadRequestException("Email '" + request.getEmail() + "' is already registered");
+        String email = request.getEmail();
+        if (email == null || email.trim().isEmpty()) {
+            email = identifier + "@student.university.edu";
+        } else {
+            email = email.trim().toLowerCase();
+        }
+
+        if (userRepository.existsByEmail(email)) {
+            throw new BadRequestException("Email '" + email + "' is already registered");
         }
 
         User user = new User();
-        user.setUsername(request.getUsername().trim());
-        user.setEmail(request.getEmail().trim().toLowerCase());
+        user.setUsername(identifier);
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setFullName(request.getFullName() != null ? request.getFullName().trim() : null);
-        user.setRole(Role.ROLE_USER);
+        user.setFullName(request.getFullName() != null && !request.getFullName().trim().isEmpty()
+                ? request.getFullName().trim()
+                : identifier);
+        user.setRole(Role.STUDENT);
 
         User savedUser = userRepository.save(user);
         return UserResponse.fromEntity(savedUser);

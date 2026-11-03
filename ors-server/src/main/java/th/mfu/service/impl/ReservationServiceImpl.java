@@ -19,7 +19,8 @@ import th.mfu.service.ReservationService;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,21 +63,28 @@ public class ReservationServiceImpl implements ReservationService {
 
         // 3. Validate Start Time
         LocalDateTime startTime;
+        ZoneId zone = ZoneId.systemDefault();
         try {
-            if (req.getStartTime().endsWith("Z")) {
-                startTime = LocalDateTime.ofInstant(Instant.parse(req.getStartTime()), ZoneOffset.UTC);
+            if (req.getStartTime() == null || req.getStartTime().isBlank()) {
+                startTime = LocalDateTime.now();
+            } else if (req.getStartTime().endsWith("Z")) {
+                startTime = LocalDateTime.ofInstant(Instant.parse(req.getStartTime()), zone);
             } else {
-                startTime = LocalDateTime.parse(req.getStartTime(), DateTimeFormatter.ISO_DATE_TIME);
+                try {
+                    startTime = ZonedDateTime.parse(req.getStartTime()).withZoneSameInstant(zone).toLocalDateTime();
+                } catch (Exception ex) {
+                    startTime = LocalDateTime.parse(req.getStartTime(), DateTimeFormatter.ISO_DATE_TIME);
+                }
             }
         } catch (Exception e) {
             startTime = LocalDateTime.now();
         }
 
         LocalDateTime now = LocalDateTime.now();
-        if (startTime.isBefore(now.minusMinutes(5))) {
+        if (startTime.isBefore(now.minusMinutes(10))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Reservation start time cannot be in the past.");
         }
-        if (startTime.isAfter(now.plusMinutes(60))) {
+        if (startTime.isAfter(now.plusMinutes(75))) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     "Reservations can only be made for arrival within 1 hour of the current time. To prevent workstation hoarding, long-advance bookings are not permitted.");
         }

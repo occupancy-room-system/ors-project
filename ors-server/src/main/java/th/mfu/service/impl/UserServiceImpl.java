@@ -1,7 +1,9 @@
 package th.mfu.service.impl;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import th.mfu.dto.request.UserRegisterRequest;
 import th.mfu.dto.request.UserUpdateRequest;
 import th.mfu.dto.response.UserResponse;
 import th.mfu.entity.OccupancySession;
@@ -64,6 +66,41 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public UserResponse createUser(UserRegisterRequest request) {
+        String username = request.getUsername();
+        if (username == null || username.trim().isEmpty()) {
+            throw new BadRequestException("Student ID / Username is required");
+        }
+        String cleanUsername = username.trim();
+        if (userRepository.existsByUsername(cleanUsername)) {
+            throw new BadRequestException("User with Student ID / Username '" + cleanUsername + "' already exists");
+        }
+
+        String email = request.getEmail();
+        if (email == null || email.trim().isEmpty()) {
+            email = cleanUsername.toLowerCase() + "@student.university.edu";
+        }
+        String cleanEmail = email.trim().toLowerCase();
+        if (userRepository.existsByEmail(cleanEmail)) {
+            throw new BadRequestException("Email '" + cleanEmail + "' is already in use");
+        }
+
+        String rawPassword = request.getPassword() != null && !request.getPassword().isBlank()
+                ? request.getPassword()
+                : "StudentPass123!";
+
+        Role role = request.getRole() != null ? request.getRole() : Role.STUDENT;
+        String fullName = request.getFullName() != null && !request.getFullName().isBlank()
+                ? request.getFullName().trim()
+                : cleanUsername;
+
+        User user = new User(cleanUsername, cleanEmail, passwordEncoder.encode(rawPassword), fullName, role);
+        User saved = userRepository.save(user);
+        return UserResponse.fromEntity(saved);
+    }
+
+    @Override
+    @Transactional
     public UserResponse updateUser(Long id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
@@ -82,6 +119,10 @@ public class UserServiceImpl implements UserService {
 
         if (request.getRole() != null) {
             user.setRole(request.getRole());
+        }
+
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword().trim()));
         }
 
         User updatedUser = userRepository.save(user);

@@ -3,18 +3,13 @@ package th.mfu.service.impl;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import th.mfu.dto.request.SeatUpsertRequest;
 import th.mfu.dto.response.AnalyticsResponse;
 import th.mfu.dto.response.QrCodeItemResponse;
 import th.mfu.dto.response.UsageDashboardResponse;
-import th.mfu.entity.AuditLog;
-import th.mfu.entity.OccupancySession;
-import th.mfu.entity.Seat;
-import th.mfu.entity.User;
+import th.mfu.entity.*;
 import th.mfu.exception.ApiException;
-import th.mfu.repository.AuditLogRepository;
-import th.mfu.repository.OccupancySessionRepository;
-import th.mfu.repository.SeatRepository;
-import th.mfu.repository.UserRepository;
+import th.mfu.repository.*;
 import th.mfu.service.AdminService;
 import th.mfu.service.QrCodeService;
 
@@ -33,15 +28,18 @@ public class AdminServiceImpl implements AdminService {
     private final OccupancySessionRepository sessionRepository;
     private final SeatRepository seatRepository;
     private final UserRepository userRepository;
+    private final RoomRepository roomRepository;
     private final AuditLogRepository auditLogRepository;
     private final QrCodeService qrCodeService;
 
     public AdminServiceImpl(OccupancySessionRepository sessionRepository, SeatRepository seatRepository,
-                            UserRepository userRepository, AuditLogRepository auditLogRepository,
+                            UserRepository userRepository, RoomRepository roomRepository,
+                            AuditLogRepository auditLogRepository,
                             QrCodeService qrCodeService) {
         this.sessionRepository = sessionRepository;
         this.seatRepository = seatRepository;
         this.userRepository = userRepository;
+        this.roomRepository = roomRepository;
         this.auditLogRepository = auditLogRepository;
         this.qrCodeService = qrCodeService;
     }
@@ -339,6 +337,131 @@ public class AdminServiceImpl implements AdminService {
                 String.valueOf(sessionId),
                 "{\"reason\":\"" + (reason != null ? reason : "Administrative termination") + "\",\"seatCode\":\"" + (seat != null ? seat.getSeatCode() : "") + "\"}"
         ));
+    }
+
+    @Override
+    @Transactional
+    public Seat createSeat(SeatUpsertRequest request) {
+        Room room = null;
+        if (request.getRoomId() != null) {
+            room = roomRepository.findById(request.getRoomId()).orElse(null);
+        }
+        if (room == null) {
+            room = roomRepository.findByRoomCode("SE-LAB-101")
+                    .orElseGet(() -> roomRepository.findAll().stream().findFirst().orElse(null));
+        }
+        if (room == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Laboratory room not found.");
+        }
+
+        String code = request.getSeatCode() != null ? request.getSeatCode().trim().toUpperCase() : "";
+        if (code.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Seat code is required.");
+        }
+        if (!code.startsWith("SEAT-")) {
+            code = "SEAT-" + code;
+        }
+
+        if (seatRepository.findBySeatCode(code).isPresent()) {
+            throw new ApiException(HttpStatus.CONFLICT, "A workstation with code " + code + " already exists.");
+        }
+
+        String qr = request.getQrToken() != null && !request.getQrToken().isBlank()
+                ? request.getQrToken().trim()
+                : "QR-SELAB101-" + code.replace("SEAT-", "");
+
+        if (seatRepository.findByQrToken(qr).isPresent()) {
+            qr = qr + "-" + System.currentTimeMillis();
+        }
+
+        Seat seat = new Seat(
+                room,
+                code,
+                request.getxPosition() != null ? request.getxPosition() : 1,
+                request.getyPosition() != null ? request.getyPosition() : 1,
+                request.getPodLabel() != null ? request.getPodLabel().trim() : "Station A",
+                request.getTableType() != null ? request.getTableType() : "INDIVIDUAL",
+                request.getGroupTableId(),
+                request.getGroupTableName(),
+                request.getGroupCapacity(),
+                request.getStatus() != null ? request.getStatus() : "AVAILABLE",
+                qr
+        );
+
+        return seatRepository.save(seat);
+    }
+
+    @Override
+    @Transactional
+    public Seat updateSeat(Long seatId, SeatUpsertRequest request) {
+        Seat seat = seatRepository.findById(seatId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Workstation " + seatId + " not found."));
+
+        if (request.getSeatCode() != null && !request.getSeatCode().isBlank()) {
+            String code = request.getSeatCode().trim().toUpperCase();
+            String formattedCode = code.startsWith("SEAT-") ? code : "SEAT-" + code;
+            Optional<Seat> existing = seatRepository.findBySeatCode(formattedCode);
+            if (existing.isPresent() && !existing.get().getId().equals(seatId)) {
+                throw new ApiException(HttpStatus.CONFLICT, "A workstation with code " + formattedCode + " already exists.");
+            }
+            seat.setSeatCode(formattedCode);
+        }
+        if (request.getPodLabel() != null) {
+            seat.setPodLabel(request.getPodLabel().trim());
+        }
+        if (request.getTableType() != null) {
+            seat.setTableType(request.getTableType());
+        }
+        if (request.getGroupTableId() != null) {
+            seat.setGroupTableId(request.getGroupTableId());
+        }
+        if (request.getGroupTableName() != null) {
+            seat.setGroupTableName(request.getGroupTableName());
+        }
+        if (request.getGroupCapacity() != null) {
+            seat.setGroupCapacity(request.getGroupCapacity());
+        }
+        if (request.getStatus() != null) {
+            seat.setStatus(request.getStatus());
+        }
+        if (request.getQrToken() != null && !request.getQrToken().isBlank()) {
+            seat.setQrToken(request.getQrToken().trim());
+        }
+
+        return seatRepository.save(seat);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSeat(Long seatId) {
+        if (!seatRepository.existsById(seatId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Workstation " + seatId + " not found.");
+        }
+        seatRepository.deleteById(seatId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OccupancySession> getAllSessions(Long userId, String status) {
+        if (userId != null && status != null && !status.equalsIgnoreCase("ALL")) {
+            return sessionRepository.findByUserIdAndStatus(userId, status.toUpperCase());
+        } else if (userId != null) {
+            return sessionRepository.findByUserIdOrderByCheckedInAtDesc(userId);
+        } else {
+            return sessionRepository.findAll().stream()
+                    .sorted((a, b) -> b.getCheckedInAt().compareTo(a.getCheckedInAt()))
+                    .filter(s -> status == null || status.equalsIgnoreCase("ALL") || status.equalsIgnoreCase(s.getStatus()))
+                    .collect(Collectors.toList());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteSessionRecord(Long sessionId) {
+        if (!sessionRepository.existsById(sessionId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Session " + sessionId + " not found.");
+        }
+        sessionRepository.deleteById(sessionId);
     }
 }
 

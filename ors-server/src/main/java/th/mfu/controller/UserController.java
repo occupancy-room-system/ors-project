@@ -32,6 +32,12 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(user));
     }
 
+    @PostMapping
+    public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody th.mfu.dto.request.UserRegisterRequest request) {
+        UserResponse created = userService.createUser(request);
+        return ResponseEntity.ok(ApiResponse.success("User created successfully", created));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponse>> updateUser(
             @PathVariable Long id,
