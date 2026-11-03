@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     group_table_name VARCHAR(50) DEFAULT NULL,
     total_seats_reserved INT DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_res_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_res_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_res_seat FOREIGN KEY (seat_id) REFERENCES seats(id) ON DELETE CASCADE,
     INDEX idx_res_user_status (user_id, status),
     INDEX idx_res_seat_status (seat_id, status)
@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS occupancy_sessions (
     status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     CONSTRAINT fk_sessions_seat FOREIGN KEY (seat_id) REFERENCES seats(id) ON DELETE RESTRICT,
     INDEX idx_sessions_user_status (user_id, status),
     INDEX idx_sessions_seat_status (seat_id, status),

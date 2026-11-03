@@ -160,7 +160,7 @@ export function AdminDashboard({
   const [userFormRole, setUserFormRole] = useState<UserRole>('STUDENT');
 
   // --------------------------------------------------------------------------
-  // SEAT MANAGEMENT STATE
+  // WORKSPACE & SEAT MANAGEMENT STATE
   // --------------------------------------------------------------------------
   const [workstationViewMode, setWorkstationViewMode] = useState<'table' | 'map'>('table');
   const [adminSelectedSeat, setAdminSelectedSeat] = useState<Seat | null>(null);
@@ -170,6 +170,25 @@ export function AdminDashboard({
   const [isAddSeatOpen, setIsAddSeatOpen] = useState(false);
   const [isEditSeatOpen, setIsEditSeatOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+
+  // Custom workspaces state (registered workspaces)
+  const [customWorkspaces, setCustomWorkspaces] = useState<
+    { id: string; name: string; type: 'INDIVIDUAL' | 'GROUP'; groupTableId?: number; seatCount?: number }[]
+  >(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ors_admin_custom_workspaces');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return [];
+  });
+
+  // Workspace creation modal
+  const [isAddWorkspaceOpen, setIsAddWorkspaceOpen] = useState(false);
+  const [workspaceFormName, setWorkspaceFormName] = useState('');
+  const [workspaceFormType, setWorkspaceFormType] = useState<'INDIVIDUAL' | 'GROUP'>('INDIVIDUAL');
+  const [workspaceFormGroupTableId, setWorkspaceFormGroupTableId] = useState<number | undefined>(undefined);
 
   // Seat form states
   const [seatFormCode, setSeatFormCode] = useState('');
@@ -205,6 +224,23 @@ export function AdminDashboard({
 
   const [sessionPage, setSessionPage] = useState(1);
   const [sessionPageSize, setSessionPageSize] = useState(25);
+
+  // --------------------------------------------------------------------------
+  // DELETE CONFIRMATION POP UP CARD STATE
+  // --------------------------------------------------------------------------
+  const [deleteConfirmState, setDeleteConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    itemLabel?: string;
+    onConfirm: () => Promise<void>;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: async () => {},
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // --------------------------------------------------------------------------
   // REFRESH ALL DATA
@@ -300,27 +336,183 @@ export function AdminDashboard({
     }
   };
 
-  const handleDeleteUser = async (u: User) => {
-    if (confirm(`Are you sure you want to delete user "${u.fullName || u.username}"? This will remove all their reservations and sessions.`)) {
-      try {
+  const handleDeleteUser = (u: User) => {
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Delete User Account',
+      description: `Are you sure you want to delete user "${u.fullName || u.username}"? This will permanently remove their account, active sessions, and reservation records. This action cannot be undone.`,
+      itemLabel: u.fullName ? `${u.fullName} (@${u.username})` : `@${u.username}`,
+      onConfirm: async () => {
         await deleteUserMutation.mutateAsync(u.id);
         showToast(`User ${u.fullName || u.username} deleted.`, 'info');
-      } catch (err: unknown) {
-        showToast(err instanceof Error ? err.message : 'Failed to delete user', 'error');
+        onRefresh();
+      },
+    });
+  };
+
+  // --------------------------------------------------------------------------
+  // WORKSPACES COMPUTED LIST & HELPERS
+  // --------------------------------------------------------------------------
+  const availableWorkspaces = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; type: 'INDIVIDUAL' | 'GROUP'; groupTableId?: number; seatCount?: number }>();
+
+    // 1. Standard default room stations
+    const defaults = [
+      { id: 'Station A', name: 'Station A', type: 'INDIVIDUAL' as const },
+      { id: 'Station B', name: 'Station B', type: 'INDIVIDUAL' as const },
+      { id: 'Station C', name: 'Station C', type: 'INDIVIDUAL' as const },
+      { id: 'Station D', name: 'Station D', type: 'INDIVIDUAL' as const },
+      { id: 'Station E', name: 'Station E', type: 'INDIVIDUAL' as const },
+      { id: 'Group table 1', name: 'Group table 1', type: 'GROUP' as const, groupTableId: 1 },
+      { id: 'Group table 2', name: 'Group table 2', type: 'GROUP' as const, groupTableId: 2 },
+      { id: 'Group table 3', name: 'Group table 3', type: 'GROUP' as const, groupTableId: 3 },
+      { id: 'Group table 4', name: 'Group table 4', type: 'GROUP' as const, groupTableId: 4 },
+      { id: 'Group table 5', name: 'Group table 5', type: 'GROUP' as const, groupTableId: 5 },
+    ];
+    defaults.forEach((d) => map.set(d.name.toLowerCase(), { ...d, seatCount: 0 }));
+
+    // 2. Discover from existing seats in roomData
+    roomData.seats.forEach((s) => {
+      const name = s.podLabel || 'Station';
+      const key = name.toLowerCase();
+      const existing = map.get(key);
+      if (existing) {
+        existing.seatCount = (existing.seatCount || 0) + 1;
+        if (s.tableType) existing.type = s.tableType;
+        if (s.groupTableId) existing.groupTableId = s.groupTableId;
+      } else {
+        map.set(key, {
+          id: name,
+          name,
+          type: s.tableType || 'INDIVIDUAL',
+          groupTableId: s.groupTableId || undefined,
+          seatCount: 1,
+        });
       }
+    });
+
+    // 3. Custom workspaces created by admin
+    customWorkspaces.forEach((cw) => {
+      const key = cw.name.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, { ...cw, seatCount: 0 });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [roomData.seats, customWorkspaces]);
+
+  // Helper to suggest next seat code when selecting a workspace
+  const suggestNextSeatCode = (ws: { name: string; type: 'INDIVIDUAL' | 'GROUP'; groupTableId?: number }) => {
+    const existingInPod = roomData.seats.filter(
+      (s) =>
+        s.podLabel?.toLowerCase() === ws.name.toLowerCase() ||
+        (ws.type === 'GROUP' && ws.groupTableId && s.groupTableId === ws.groupTableId),
+    );
+
+    if (ws.type === 'GROUP') {
+      const gId = ws.groupTableId || 1;
+      let maxNum = 0;
+      existingInPod.forEach((s) => {
+        const m = s.seatCode.match(new RegExp(`GT${gId}-(\\d+)`, 'i')) || s.seatCode.match(/(\d+)$/);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
+      return `GT${gId}-${maxNum + 1}`;
+    } else {
+      // Individual station
+      const letterMatch = ws.name.match(/station\s+([a-zA-Z])/i);
+      const letter = letterMatch ? letterMatch[1].toUpperCase() : ws.name.substring(0, 1).toUpperCase();
+      let maxNum = 0;
+      existingInPod.forEach((s) => {
+        const m = s.seatCode.match(new RegExp(`${letter}(\\d+)`, 'i')) || s.seatCode.match(/(\d+)$/);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
+      return `${letter}${maxNum + 1}`;
     }
+  };
+
+  // --------------------------------------------------------------------------
+  // WORKSPACE CRUD HANDLERS
+  // --------------------------------------------------------------------------
+  const handleOpenAddWorkspace = () => {
+    setWorkspaceFormName('');
+    setWorkspaceFormType('INDIVIDUAL');
+    setWorkspaceFormGroupTableId(undefined);
+    setIsAddWorkspaceOpen(true);
+  };
+
+  const handleCreateWorkspaceSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = workspaceFormName.trim();
+    if (!name) {
+      showToast('Workspace name is required.', 'error');
+      return;
+    }
+
+    const newWs = {
+      id: name,
+      name,
+      type: workspaceFormType,
+      groupTableId:
+        workspaceFormType === 'GROUP'
+          ? workspaceFormGroupTableId ||
+            availableWorkspaces.filter((w) => w.type === 'GROUP').length + 1
+          : undefined,
+      seatCount: 0,
+    };
+
+    setCustomWorkspaces((prev) => {
+      const updated = [...prev.filter((w) => w.name.toLowerCase() !== name.toLowerCase()), newWs];
+      try {
+        localStorage.setItem('ors_admin_custom_workspaces', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    showToast(`Workspace "${name}" created!`, 'success');
+    setIsAddWorkspaceOpen(false);
+
+    // Automatically transition to Add Seat with this new workspace pre-selected!
+    setSeatFormPod(newWs.name);
+    setSeatFormType(newWs.type);
+    setSeatFormGroupTableId(newWs.groupTableId);
+    setSeatFormCode(suggestNextSeatCode(newWs));
+    setSeatFormStatus('AVAILABLE');
+    setIsAddSeatOpen(true);
   };
 
   // --------------------------------------------------------------------------
   // SEAT CRUD HANDLERS
   // --------------------------------------------------------------------------
-  const handleOpenAddSeat = () => {
-    setSeatFormCode('');
-    setSeatFormPod('Station A');
-    setSeatFormType('INDIVIDUAL');
-    setSeatFormGroupTableId(undefined);
+  const handleOpenAddSeat = (targetWsName?: string) => {
+    const ws =
+      (targetWsName ? availableWorkspaces.find((w) => w.name.toLowerCase() === targetWsName.toLowerCase()) : null) ||
+      availableWorkspaces[0] || {
+        id: 'Station A',
+        name: 'Station A',
+        type: 'INDIVIDUAL' as const,
+      };
+    setSeatFormPod(ws.name);
+    setSeatFormType(ws.type);
+    setSeatFormGroupTableId(ws.groupTableId);
+    setSeatFormCode(suggestNextSeatCode(ws));
     setSeatFormStatus('AVAILABLE');
     setIsAddSeatOpen(true);
+  };
+
+  const handleSelectWorkspaceInForm = (wsName: string) => {
+    const ws = availableWorkspaces.find((w) => w.name.toLowerCase() === wsName.toLowerCase());
+    if (!ws) return;
+    setSeatFormPod(ws.name);
+    setSeatFormType(ws.type);
+    setSeatFormGroupTableId(ws.groupTableId);
+    setSeatFormCode(suggestNextSeatCode(ws));
   };
 
   const handleOpenEditSeat = (s: Seat) => {
@@ -386,6 +578,7 @@ export function AdminDashboard({
                   : `SEAT-${seatFormCode.trim().toUpperCase()}`,
                 podLabel: seatFormPod.trim(),
                 tableType: seatFormType,
+                groupTableId: seatFormType === 'GROUP' ? seatFormGroupTableId : undefined,
                 status: seatFormStatus as SeatStatus,
               }
             : null,
@@ -397,19 +590,21 @@ export function AdminDashboard({
     }
   };
 
-  const handleDeleteSeat = async (s: Seat) => {
-    if (confirm(`Are you sure you want to permanently delete workstation ${s.seatCode}?`)) {
-      try {
+  const handleDeleteSeat = (s: Seat) => {
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Delete Workstation',
+      description: `Are you sure you want to permanently delete workstation ${s.seatCode}? Students will no longer see or be able to reserve this desk.`,
+      itemLabel: `Workstation ${s.seatCode} (${s.podLabel || 'Station'})`,
+      onConfirm: async () => {
         await deleteSeatMutation.mutateAsync(s.id);
         if (adminSelectedSeat?.id === s.id) {
           setAdminSelectedSeat(null);
         }
         showToast(`Workstation ${s.seatCode} deleted.`, 'info');
         onRefresh();
-      } catch (err: unknown) {
-        showToast(err instanceof Error ? err.message : 'Failed to delete seat', 'error');
-      }
-    }
+      },
+    });
   };
 
   // --------------------------------------------------------------------------
@@ -427,15 +622,18 @@ export function AdminDashboard({
     }
   };
 
-  const handleDeleteSession = async (sessionId: number) => {
-    if (confirm('Delete this session log record permanently?')) {
-      try {
+  const handleDeleteSession = (sessionId: number) => {
+    setDeleteConfirmState({
+      isOpen: true,
+      title: 'Delete Session Record',
+      description: `Are you sure you want to permanently remove session history record #${sessionId}? This action cannot be undone.`,
+      itemLabel: `Session Log #${sessionId}`,
+      onConfirm: async () => {
         await deleteSessionMutation.mutateAsync(sessionId);
         showToast('Session record deleted.', 'info');
-      } catch (err: unknown) {
-        showToast(err instanceof Error ? err.message : 'Failed to delete record', 'error');
-      }
-    }
+        onRefresh();
+      },
+    });
   };
 
   // --------------------------------------------------------------------------
@@ -1188,7 +1386,16 @@ export function AdminDashboard({
                   </div>
 
                   <Button
-                    onClick={handleOpenAddSeat}
+                    variant="outline"
+                    onClick={handleOpenAddWorkspace}
+                    size="sm"
+                    className="gap-2 text-xs font-semibold rounded-xl bg-white dark:bg-[#111827] border-[#edf1f7] dark:border-[#1f293d] text-slate-700 dark:text-slate-300 hover:bg-[#f8fafc] shadow-2xs cursor-pointer"
+                  >
+                    <Layers className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                    <span>Create Workspace</span>
+                  </Button>
+                  <Button
+                    onClick={() => handleOpenAddSeat()}
                     size="sm"
                     className="gap-2 text-xs font-bold rounded-xl bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] shadow-sm shadow-[#4a7cf6]/20 cursor-pointer"
                   >
@@ -1408,7 +1615,10 @@ export function AdminDashboard({
                 room={roomData.room}
                 seats={roomData.seats}
                 selectedSeat={adminSelectedSeat}
-                onSelectSeat={(s) => setAdminSelectedSeat(s)}
+                onSelectSeat={(s) => {
+                  setAdminSelectedSeat(s);
+                  handleOpenEditSeat(s);
+                }}
                 isAdminMode={true}
               />
 
@@ -1500,14 +1710,25 @@ export function AdminDashboard({
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      size="sm"
-                      onClick={handleOpenAddSeat}
-                      className="h-8 px-3 text-xs font-bold rounded-xl bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] shadow-2xs gap-1.5"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add New Workstation</span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleOpenAddWorkspace}
+                        className="h-8 px-3 text-xs font-semibold rounded-xl bg-white dark:bg-[#111827] border-[#edf1f7] dark:border-[#1f293d] text-slate-700 dark:text-slate-300 hover:bg-[#f8fafc] shadow-2xs gap-1.5 cursor-pointer"
+                      >
+                        <Layers className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                        <span>Create Workspace</span>
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleOpenAddSeat()}
+                        className="h-8 px-3 text-xs font-bold rounded-xl bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] shadow-2xs gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Workstation</span>
+                      </Button>
+                    </div>
                   )}
                 </div>
 
@@ -2286,24 +2507,320 @@ export function AdminDashboard({
       </Dialog>
 
       {/* -------------------------------------------------------------------- */}
+      {/* MODAL 2B: CREATE WORKSPACE DIALOG                                    */}
+      {/* -------------------------------------------------------------------- */}
+      <Dialog open={isAddWorkspaceOpen} onOpenChange={setIsAddWorkspaceOpen}>
+        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl bg-white dark:bg-[#161c26] border-slate-200 dark:border-slate-800 shadow-xl">
+          <DialogHeader>
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-[#4a7cf6] flex items-center justify-center mb-1">
+              <Layers className="w-5 h-5" />
+            </div>
+            <DialogTitle className="text-base font-extrabold text-foreground">
+              Create New Workspace / Station
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Define a new workspace area (e.g. Station F or Group table 6) before adding seats to it.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateWorkspaceSubmit} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Workspace Name *</Label>
+              <Input
+                placeholder="e.g. Station F or Group table 6"
+                value={workspaceFormName}
+                onChange={(e) => setWorkspaceFormName(e.target.value)}
+                className="text-xs"
+                required
+                autoFocus
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Workspace Category</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs outline-none cursor-pointer">
+                  <span>
+                    {workspaceFormType === 'GROUP'
+                      ? 'GROUP (Shared Group Table)'
+                      : 'INDIVIDUAL (Single Student Desks)'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
+                  <DropdownMenuItem
+                    onClick={() => setWorkspaceFormType('INDIVIDUAL')}
+                    className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
+                      workspaceFormType === 'INDIVIDUAL'
+                        ? 'bg-[#f0f5ff] text-[#4070d8] font-bold dark:bg-blue-950 dark:text-blue-300'
+                        : 'text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    <span>INDIVIDUAL (Single Student Desks)</span>
+                    {workspaceFormType === 'INDIVIDUAL' && <Check className="w-3.5 h-3.5 text-[#4a7cf6]" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setWorkspaceFormType('GROUP')}
+                    className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
+                      workspaceFormType === 'GROUP'
+                        ? 'bg-[#f0f5ff] text-[#4070d8] font-bold dark:bg-blue-950 dark:text-blue-300'
+                        : 'text-slate-700 dark:text-slate-200'
+                    }`}
+                  >
+                    <span>GROUP (Shared Group Table)</span>
+                    {workspaceFormType === 'GROUP' && <Check className="w-3.5 h-3.5 text-[#4a7cf6]" />}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {workspaceFormType === 'GROUP' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Group Table ID (1-10)</Label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 6"
+                  value={workspaceFormGroupTableId || ''}
+                  onChange={(e) => setWorkspaceFormGroupTableId(Number(e.target.value))}
+                  className="text-xs font-mono"
+                />
+              </div>
+            )}
+
+            <DialogFooter className="pt-2 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAddWorkspaceOpen(false)}
+                className="text-xs h-8 cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20 h-8 cursor-pointer"
+              >
+                Create Workspace
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* -------------------------------------------------------------------- */}
       {/* MODAL 3: ADD WORKSTATION MODAL                                       */}
       {/* -------------------------------------------------------------------- */}
       <Dialog open={isAddSeatOpen} onOpenChange={setIsAddSeatOpen}>
-        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl">
+        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl bg-white dark:bg-[#161c26] border-slate-200 dark:border-slate-800 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-foreground">
-              Add New Workstation
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-[#4a7cf6] flex items-center justify-center mb-1">
+              <Plus className="w-5 h-5" />
+            </div>
+            <DialogTitle className="text-base font-extrabold text-foreground">
+              Add Seat to Workspace
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Register a new physical seat in Turing Hall 101.
+              Select the target workspace from the dropdown to automatically configure seat properties.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateSeatSubmit} className="space-y-4 py-2">
+            {/* Target Workspace Dropdown Box */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Seat Code (e.g. F1, GT6-1) *</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Workspace / Table Pod *</Label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddSeatOpen(false);
+                    handleOpenAddWorkspace();
+                  }}
+                  className="text-[11px] font-bold text-[#4a7cf6] dark:text-blue-400 hover:underline cursor-pointer"
+                >
+                  + Create Workspace
+                </button>
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full h-10 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs outline-none cursor-pointer">
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="w-2 h-2 rounded-full bg-[#4a7cf6] shrink-0" />
+                    <span className="font-bold text-slate-800 dark:text-slate-100">{seatFormPod || 'Select Workspace'}</span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      · {seatFormType === 'GROUP' ? 'Group Table' : 'Individual Station'}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[370px] max-h-72 overflow-y-auto p-1.5 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-xl rounded-xl">
+                  <DropdownMenuLabel className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1">
+                    Individual Stations
+                  </DropdownMenuLabel>
+                  {availableWorkspaces
+                    .filter((w) => w.type === 'INDIVIDUAL')
+                    .map((w) => (
+                      <DropdownMenuItem
+                        key={w.name}
+                        onClick={() => handleSelectWorkspaceInForm(w.name)}
+                        className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
+                          seatFormPod.toLowerCase() === w.name.toLowerCase()
+                            ? 'bg-[#f0f5ff] text-[#4070d8] font-bold dark:bg-blue-950 dark:text-blue-300'
+                            : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{w.name}</span>
+                          {w.seatCount !== undefined && (
+                            <span className="text-[10px] text-slate-400">({w.seatCount} desks)</span>
+                          )}
+                        </div>
+                        {seatFormPod.toLowerCase() === w.name.toLowerCase() && (
+                          <Check className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+
+                  <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
+
+                  <DropdownMenuLabel className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1">
+                    Group Tables
+                  </DropdownMenuLabel>
+                  {availableWorkspaces
+                    .filter((w) => w.type === 'GROUP')
+                    .map((w) => (
+                      <DropdownMenuItem
+                        key={w.name}
+                        onClick={() => handleSelectWorkspaceInForm(w.name)}
+                        className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
+                          seatFormPod.toLowerCase() === w.name.toLowerCase()
+                            ? 'bg-[#f0f5ff] text-[#4070d8] font-bold dark:bg-blue-950 dark:text-blue-300'
+                            : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{w.name}</span>
+                          {w.seatCount !== undefined && (
+                            <span className="text-[10px] text-slate-400">({w.seatCount} desks)</span>
+                          )}
+                        </div>
+                        {seatFormPod.toLowerCase() === w.name.toLowerCase() && (
+                          <Check className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+
+                  <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
+
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setIsAddSeatOpen(false);
+                      handleOpenAddWorkspace();
+                    }}
+                    className="text-xs py-2 px-2.5 font-bold text-[#4a7cf6] dark:text-blue-400 cursor-pointer flex items-center gap-2 hover:bg-[#f0f5ff] dark:hover:bg-blue-950/40 rounded-lg"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Create New Workspace...</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Seat Code with Auto-suggestion note */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Seat Code *</Label>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  Auto-suggested for {seatFormPod}
+                </span>
+              </div>
               <Input
-                placeholder="e.g. F1"
+                placeholder="e.g. A8 or GT1-5"
+                value={seatFormCode}
+                onChange={(e) => setSeatFormCode(e.target.value)}
+                className="text-xs font-mono font-bold"
+                required
+              />
+            </div>
+
+            {/* Workspace Type Info Box */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">Workspace Type:</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                {seatFormType === 'GROUP'
+                  ? `Group Table (ID: ${seatFormGroupTableId || 1})`
+                  : 'Individual Station'}
+              </span>
+            </div>
+
+            {/* Status Dropdown */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Initial Status</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs outline-none cursor-pointer">
+                  <span>{seatFormStatus}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
+                  {['AVAILABLE', 'MAINTENANCE', 'OCCUPIED', 'RESERVED'].map((st) => (
+                    <DropdownMenuItem
+                      key={st}
+                      onClick={() => setSeatFormStatus(st)}
+                      className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
+                        seatFormStatus === st
+                          ? 'bg-[#f0f5ff] text-[#4070d8] font-bold dark:bg-blue-950 dark:text-blue-300'
+                          : 'text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      <span>{st}</span>
+                      {seatFormStatus === st && <Check className="w-3.5 h-3.5 text-[#4a7cf6]" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAddSeatOpen(false)}
+                className="text-xs h-8 cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20 h-8 cursor-pointer"
+              >
+                Add Seat to {seatFormPod}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* -------------------------------------------------------------------- */}
+      {/* MODAL 4: EDIT WORKSTATION MODAL                                      */}
+      {/* -------------------------------------------------------------------- */}
+      <Dialog open={isEditSeatOpen} onOpenChange={setIsEditSeatOpen}>
+        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">
+              Edit Workstation {selectedSeat?.seatCode}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Modify workstation metadata or station grouping.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleUpdateSeatSubmit} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Seat Code *</Label>
+              <Input
                 value={seatFormCode}
                 onChange={(e) => setSeatFormCode(e.target.value)}
                 className="text-xs font-mono"
@@ -2312,14 +2829,84 @@ export function AdminDashboard({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Station / Pod Label *</Label>
-              <Input
-                placeholder="e.g. Station F"
-                value={seatFormPod}
-                onChange={(e) => setSeatFormPod(e.target.value)}
-                className="text-xs"
-                required
-              />
+              <Label className="text-xs font-semibold">Workspace / Table Pod *</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger className="w-full h-10 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs outline-none cursor-pointer">
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="w-2 h-2 rounded-full bg-[#4a7cf6] shrink-0" />
+                    <span className="font-bold text-slate-800 dark:text-slate-100">{seatFormPod || 'Select Workspace'}</span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      · {seatFormType === 'GROUP' ? 'Group Table' : 'Individual Station'}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[370px] max-h-72 overflow-y-auto p-1.5 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-xl rounded-xl">
+                  <DropdownMenuLabel className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1">
+                    Individual Stations
+                  </DropdownMenuLabel>
+                  {availableWorkspaces
+                    .filter((w) => w.type === 'INDIVIDUAL')
+                    .map((w) => (
+                      <DropdownMenuItem
+                        key={w.name}
+                        onClick={() => {
+                          setSeatFormPod(w.name);
+                          setSeatFormType(w.type);
+                          setSeatFormGroupTableId(w.groupTableId);
+                        }}
+                        className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
+                          seatFormPod.toLowerCase() === w.name.toLowerCase()
+                            ? 'bg-[#f0f5ff] text-[#4070d8] font-bold dark:bg-blue-950 dark:text-blue-300'
+                            : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{w.name}</span>
+                          {w.seatCount !== undefined && (
+                            <span className="text-[10px] text-slate-400">({w.seatCount} desks)</span>
+                          )}
+                        </div>
+                        {seatFormPod.toLowerCase() === w.name.toLowerCase() && (
+                          <Check className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+
+                  <DropdownMenuSeparator className="my-1 border-slate-100 dark:border-slate-800" />
+
+                  <DropdownMenuLabel className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1">
+                    Group Tables
+                  </DropdownMenuLabel>
+                  {availableWorkspaces
+                    .filter((w) => w.type === 'GROUP')
+                    .map((w) => (
+                      <DropdownMenuItem
+                        key={w.name}
+                        onClick={() => {
+                          setSeatFormPod(w.name);
+                          setSeatFormType(w.type);
+                          setSeatFormGroupTableId(w.groupTableId);
+                        }}
+                        className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
+                          seatFormPod.toLowerCase() === w.name.toLowerCase()
+                            ? 'bg-[#f0f5ff] text-[#4070d8] font-bold dark:bg-blue-950 dark:text-blue-300'
+                            : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{w.name}</span>
+                          {w.seatCount !== undefined && (
+                            <span className="text-[10px] text-slate-400">({w.seatCount} desks)</span>
+                          )}
+                        </div>
+                        {seatFormPod.toLowerCase() === w.name.toLowerCase() && (
+                          <Check className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <div className="space-y-1.5">
@@ -2373,101 +2960,6 @@ export function AdminDashboard({
               </div>
             )}
 
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsAddSeatOpen(false)}
-                className="text-xs"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                className="text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20"
-              >
-                Create Workstation
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* -------------------------------------------------------------------- */}
-      {/* MODAL 4: EDIT WORKSTATION MODAL                                      */}
-      {/* -------------------------------------------------------------------- */}
-      <Dialog open={isEditSeatOpen} onOpenChange={setIsEditSeatOpen}>
-        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-foreground">
-              Edit Workstation {selectedSeat?.seatCode}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Modify workstation metadata or station grouping.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleUpdateSeatSubmit} className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Seat Code *</Label>
-              <Input
-                value={seatFormCode}
-                onChange={(e) => setSeatFormCode(e.target.value)}
-                className="text-xs font-mono"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Station / Pod Label *</Label>
-              <Input
-                value={seatFormPod}
-                onChange={(e) => setSeatFormPod(e.target.value)}
-                className="text-xs"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Table Type</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs outline-none cursor-pointer">
-                  <span>
-                    {seatFormType === 'GROUP'
-                      ? 'GROUP (Shared Group Table)'
-                      : 'INDIVIDUAL (Single Student Desk)'}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
-                  <DropdownMenuItem
-                    onClick={() => setSeatFormType('INDIVIDUAL')}
-                    className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
-                      seatFormType === 'INDIVIDUAL'
-                        ? 'bg-[#f0f5ff] text-[#4070d8] font-bold dark:bg-blue-950 dark:text-blue-300'
-                        : 'text-slate-700 dark:text-slate-200'
-                    }`}
-                  >
-                    <span>INDIVIDUAL (Single Student Desk)</span>
-                    {seatFormType === 'INDIVIDUAL' && <Check className="w-3.5 h-3.5 text-[#4a7cf6]" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setSeatFormType('GROUP')}
-                    className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
-                      seatFormType === 'GROUP'
-                        ? 'bg-[#f0f5ff] text-[#4070d8] font-bold dark:bg-blue-950 dark:text-blue-300'
-                        : 'text-slate-700 dark:text-slate-200'
-                    }`}
-                  >
-                    <span>GROUP (Shared Group Table)</span>
-                    {seatFormType === 'GROUP' && <Check className="w-3.5 h-3.5 text-[#4a7cf6]" />}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Status</Label>
               <DropdownMenu>
@@ -2507,23 +2999,40 @@ export function AdminDashboard({
               </DropdownMenu>
             </div>
 
-            <DialogFooter className="pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditSeatOpen(false)}
-                className="text-xs"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                className="text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20"
-              >
-                Save Workstation
-              </Button>
+            <DialogFooter className="pt-2 flex flex-row items-center justify-between sm:justify-between w-full">
+              {selectedSeat && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsEditSeatOpen(false);
+                    handleDeleteSeat(selectedSeat);
+                  }}
+                  className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2.5 h-8 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  Delete Workstation
+                </Button>
+              )}
+              <div className="flex items-center gap-2 ml-auto">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditSeatOpen(false)}
+                  className="text-xs h-8 cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20 h-8 cursor-pointer"
+                >
+                  Save Workstation
+                </Button>
+              </div>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -2643,6 +3152,74 @@ export function AdminDashboard({
               className="text-xs"
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* -------------------------------------------------------------------- */}
+      {/* MODAL 7: DELETE CONFIRMATION POP UP CARD                             */}
+      {/* -------------------------------------------------------------------- */}
+      <Dialog
+        open={deleteConfirmState.isOpen}
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setDeleteConfirmState((prev) => ({ ...prev, isOpen: false }));
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl bg-white dark:bg-[#161c26] border-slate-200 dark:border-slate-800 shadow-xl">
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-2">
+              <Trash2 className="w-6 h-6 stroke-[2]" />
+            </div>
+            <DialogTitle className="text-base font-extrabold text-foreground">
+              {deleteConfirmState.title}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              {deleteConfirmState.description}
+            </DialogDescription>
+          </DialogHeader>
+
+          {deleteConfirmState.itemLabel && (
+            <div className="p-3 my-1 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-center gap-2.5">
+              <div className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                {deleteConfirmState.itemLabel}
+              </span>
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 flex flex-row items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isDeleting}
+              onClick={() => setDeleteConfirmState((prev) => ({ ...prev, isOpen: false }))}
+              className="text-xs h-9 px-4 rounded-xl cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={isDeleting}
+              onClick={async () => {
+                setIsDeleting(true);
+                try {
+                  await deleteConfirmState.onConfirm();
+                  setDeleteConfirmState((prev) => ({ ...prev, isOpen: false }));
+                } catch (err: unknown) {
+                  showToast(err instanceof Error ? err.message : 'Delete failed', 'error');
+                } finally {
+                  setIsDeleting(false);
+                }
+              }}
+              className="text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white h-9 px-4 rounded-xl shadow-sm shadow-rose-600/20 cursor-pointer"
+            >
+              {isDeleting ? 'Deleting...' : 'Yes, Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>
