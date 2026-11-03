@@ -66,5 +66,41 @@ public class AdminController {
         adminService.terminateSession(sessionId, reason);
         return ResponseEntity.ok(ApiResponse.success("Session force-terminated.", Map.of("sessionId", sessionId, "status", "FORCE_TERMINATED")));
     }
+
+    // Seat CRUD
+    @PostMapping("/seats")
+    public ResponseEntity<ApiResponse<Seat>> createSeat(@RequestBody th.mfu.dto.request.SeatUpsertRequest request) {
+        Seat created = adminService.createSeat(request);
+        return ResponseEntity.ok(ApiResponse.success("Workstation created successfully", created));
+    }
+
+    @PutMapping("/seats/{seatId}")
+    public ResponseEntity<ApiResponse<Seat>> updateSeat(
+            @PathVariable Long seatId,
+            @RequestBody th.mfu.dto.request.SeatUpsertRequest request) {
+        Seat updated = adminService.updateSeat(seatId, request);
+        return ResponseEntity.ok(ApiResponse.success("Workstation updated successfully", updated));
+    }
+
+    @DeleteMapping("/seats/{seatId}")
+    public ResponseEntity<ApiResponse<Void>> deleteSeat(@PathVariable Long seatId) {
+        adminService.deleteSeat(seatId);
+        return ResponseEntity.ok(ApiResponse.success("Workstation deleted successfully", null));
+    }
+
+    // Sessions History & Monitoring
+    @GetMapping("/sessions")
+    public ResponseEntity<ApiResponse<List<th.mfu.entity.OccupancySession>>> getAllSessions(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String status) {
+        List<th.mfu.entity.OccupancySession> sessions = adminService.getAllSessions(userId, status);
+        return ResponseEntity.ok(ApiResponse.success(sessions));
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<ApiResponse<Void>> deleteSessionRecord(@PathVariable Long sessionId) {
+        adminService.deleteSessionRecord(sessionId);
+        return ResponseEntity.ok(ApiResponse.success("Session log record deleted successfully", null));
+    }
 }
 
