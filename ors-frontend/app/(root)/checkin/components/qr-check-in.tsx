@@ -3,11 +3,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import jsQR from 'jsqr';
-import { Seat, User, Reservation } from '@/types';
+import { Seat, User, Reservation, OccupancySession } from '@/types';
 import { useActivateQrMutation, useCheckInMutation } from '@/hooks/use-session-query';
 import { useCancelReservationMutation } from '@/hooks/use-reservation-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -32,7 +31,7 @@ import {
   Scan,
   AlertTriangle,
   Loader2,
-  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 
@@ -41,7 +40,7 @@ interface QrCheckInProps {
   userReservations: Reservation[];
   currentUser: User | null;
   onOpenLogin: () => void;
-  onSessionActivated: () => void;
+  onSessionActivated: (session?: OccupancySession | null) => void;
   onNavigateToMap: () => void;
 }
 
@@ -56,20 +55,18 @@ export function QrCheckIn({
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Policy / feedback modal
-  const [wrongSeatModal, setWrongSeatModal] = useState<{
-    reservedSeatCode: string;
-    scannedSeatCode: string;
+  // Alert modal state for wrong QR, invalid token, or mismatch
+  const [qrAlertModal, setQrAlertModal] = useState<{
+    title: string;
     message: string;
+    type?: 'error' | 'warning';
   } | null>(null);
-
-  // Manual code input modal
-  const [manualModalOpen, setManualModalOpen] = useState(false);
-  const [manualCode, setManualCode] = useState('');
 
   // Camera state
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [cameraLoading, setCameraLoading] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -149,56 +146,111 @@ export function QrCheckIn({
     isProcessingRef.current = true;
     setErrorMessage(null);
 
-    const token = rawToken.trim();
+    let token = rawToken.trim();
+
+    // Check if raw token is a URL (e.g. from an admin/checkin URL)
+    try {
+      if (token.startsWith('http://') || token.startsWith('https://')) {
+        const parsed = new URL(token);
+        const qToken = parsed.searchParams.get('token') || parsed.searchParams.get('qr') || parsed.searchParams.get('seat') || parsed.searchParams.get('code');
+        if (qToken) {
+          token = qToken.trim();
+        } else {
+          const parts = parsed.pathname.split('/').filter(Boolean);
+          if (parts.length > 0) {
+            token = parts[parts.length - 1].trim();
+          }
+        }
+      }
+    } catch {
+      // not a URL
+    }
 
     // Verify token against seat codes or QR tokens
-    const matchedSeat = seats.find(
-      (s) =>
-        s.qrToken.toLowerCase() === token.toLowerCase() ||
-        s.seatCode.toLowerCase() === token.toLowerCase() ||
-        s.seatCode.toLowerCase() === `seat-${token.toLowerCase()}` ||
-        cleanSeatCode(s.seatCode).toLowerCase() === token.toLowerCase(),
-    );
+    const matchedSeat = seats.find((s) => {
+      const sToken = s.qrToken?.toLowerCase();
+      const sCode = s.seatCode?.toLowerCase();
+      const sClean = cleanSeatCode(s.seatCode).toLowerCase();
+      const sNoHyphen = sCode?.replace(/^seat[-_ ]?/i, '');
+      const t = token.toLowerCase();
+      const tClean = cleanSeatCode(token).toLowerCase();
+      const tNoPrefix = t.replace(/^qr-selab101-/i, '').replace(/^seat[-_ ]?/i, '');
 
-    // If student holds a specific pending reservation, enforce matching that desk
+      return (
+        sToken === t ||
+        sCode === t ||
+        sClean === t ||
+        sCode === `seat-${t}` ||
+        sClean === tClean ||
+        sClean === tNoPrefix ||
+        sNoHyphen === tNoPrefix
+      );
+    });
+
+    // 1. If scanned code is not recognized as any valid workstation in the room
+    if (!matchedSeat) {
+      setQrAlertModal({
+        title: 'Invalid QR Code',
+        message: `The scanned code "${token.slice(0, 32)}" is not a valid SE Lab workstation. Please scan the official QR code sticker placed on your desk.`,
+        type: 'error',
+      });
+      isProcessingRef.current = false;
+      return;
+    }
+
+    // 2. If student holds a specific pending reservation, enforce matching that desk
     if (activeReservation) {
       const reservedCode = cleanSeatCode(activeReservation.seatCode).toLowerCase();
-      const tokenClean = cleanSeatCode(token).toLowerCase();
+      const matchedCode = cleanSeatCode(matchedSeat.seatCode).toLowerCase();
 
-      if (tokenClean !== reservedCode && matchedSeat && cleanSeatCode(matchedSeat.seatCode).toLowerCase() !== reservedCode) {
-        setWrongSeatModal({
-          reservedSeatCode: displaySeatCode,
-          scannedSeatCode: matchedSeat ? cleanSeatCode(matchedSeat.seatCode) : token,
-          message: `The scanned QR must belong to Seat ${displaySeatCode}. A different desk's code won't start this session.`,
+      if (reservedCode !== matchedCode) {
+        setQrAlertModal({
+          title: 'Wrong Workstation Scanned',
+          message: `You reserved Seat ${displaySeatCode}. You cannot activate this session by scanning Seat ${cleanSeatCode(matchedSeat.seatCode)}. Please scan the QR code sticker on your reserved desk (${displaySeatCode}).`,
+          type: 'warning',
         });
         isProcessingRef.current = false;
         return;
       }
     }
 
-    playSuccessChime();
+    // 3. User must be signed in
+    if (!currentUser) {
+      onOpenLogin();
+      isProcessingRef.current = false;
+      return;
+    }
+
     setActionLoading(true);
 
     try {
-      if (currentUser && matchedSeat) {
-        await activateMutation.mutateAsync({
+      let activatedSession: OccupancySession | null = null;
+      if (activeReservation) {
+        activatedSession = await activateMutation.mutateAsync({
           qrToken: matchedSeat.qrToken,
           seatCode: matchedSeat.seatCode,
           userId: currentUser.id,
         });
-      } else if (matchedSeat) {
-        await checkInMutation.mutateAsync({
+      } else {
+        activatedSession = await checkInMutation.mutateAsync({
           qrToken: matchedSeat.qrToken,
-          userId: currentUser?.id || 1,
+          userId: currentUser.id,
         });
       }
-      onSessionActivated();
+
+      playSuccessChime();
+      stopCamera();
+      onSessionActivated(activatedSession);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Failed to activate workstation session.');
+      const msg = err instanceof Error ? err.message : 'Failed to activate workstation session.';
+      setQrAlertModal({
+        title: 'Check-In Error',
+        message: msg,
+        type: 'error',
+      });
     } finally {
       setActionLoading(false);
       isProcessingRef.current = false;
-      stopCamera();
     }
   };
 
@@ -212,56 +264,98 @@ export function QrCheckIn({
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     setIsCameraActive(false);
+    setCameraLoading(false);
   }, []);
 
   const scanFrame = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+    if (!video || !canvas || video.readyState < 2) {
       animationFrameIdRef.current = requestAnimationFrame(scanFrame);
       return;
     }
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert',
+        });
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: 'dontInvert',
-    });
-
-    if (code && code.data && !isProcessingRef.current) {
-      handleProcessQrToken(code.data);
-      return;
+        if (code && code.data && !isProcessingRef.current) {
+          handleProcessQrToken(code.data);
+          return;
+        }
+      }
     }
 
     animationFrameIdRef.current = requestAnimationFrame(scanFrame);
   }, [handleProcessQrToken]);
 
-  const startCamera = async () => {
-    setCameraError(null);
-    setErrorMessage(null);
-    try {
-      const constraints: MediaStreamConstraints = {
-        video: { facingMode: { ideal: 'environment' } },
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+  const startCamera = useCallback(
+    async (requestedFacingMode?: 'environment' | 'user') => {
+      setCameraError(null);
+      setErrorMessage(null);
+      setCameraLoading(true);
+
+      const mode = requestedFacingMode || facingMode;
+
+      try {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: mode },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.setAttribute('playsinline', 'true');
+          try {
+            await videoRef.current.play();
+          } catch {
+            // Autoplay permissions fallback
+          }
+        }
+
+        setIsCameraActive(true);
+        if (animationFrameIdRef.current) {
+          cancelAnimationFrame(animationFrameIdRef.current);
+        }
+        animationFrameIdRef.current = requestAnimationFrame(scanFrame);
+      } catch (err) {
+        console.error('Camera access error:', err);
+        setCameraError(
+          'Camera access denied or unavailable. Please enable camera access in your browser or upload a QR image.',
+        );
+        setIsCameraActive(false);
+      } finally {
+        setCameraLoading(false);
       }
-      setIsCameraActive(true);
-      animationFrameIdRef.current = requestAnimationFrame(scanFrame);
-    } catch (err) {
-      setCameraError('Camera access denied or unavailable. You can enter the code manually or upload a QR image.');
-      setIsCameraActive(false);
-    }
-  };
+    },
+    [facingMode, scanFrame],
+  );
 
   const toggleCamera = () => {
     if (isCameraActive) {
@@ -269,6 +363,12 @@ export function QrCheckIn({
     } else {
       startCamera();
     }
+  };
+
+  const switchCamera = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    startCamera(nextMode);
   };
 
   // QR Image File Upload
@@ -316,13 +416,7 @@ export function QrCheckIn({
     }
   };
 
-  // Direct quick simulation for testing if reservation exists
-  const handleSimulateCheckIn = () => {
-    if (activeReservation) {
-      handleProcessQrToken(`QR-SELAB101-${displaySeatCode}`);
-    }
-  };
-
+  // Cleanup camera on component unmount
   useEffect(() => {
     return () => {
       stopCamera();
@@ -567,46 +661,125 @@ export function QrCheckIn({
               : 'Scan any available desk QR code in Turing Hall 101 to start a session.'}
           </p>
 
+          {/* Camera Error Alert Banner if permission denied */}
+          {cameraError && (
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <span className="font-bold block">Camera Unavailable</span>
+                <p className="text-[11px] leading-relaxed text-amber-700/80 dark:text-amber-300/80">
+                  {cameraError}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Viewfinder Area */}
-          <div className="relative rounded-2xl bg-slate-50/90 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 h-64 sm:h-72 flex flex-col items-center justify-center overflow-hidden">
+          <div className="relative rounded-2xl bg-slate-950 border border-slate-800/90 h-80 sm:h-96 flex flex-col items-center justify-center overflow-hidden shadow-inner">
             <canvas ref={canvasRef} className="hidden" />
 
-            {isCameraActive ? (
-              <div className="relative w-full h-full">
-                <video
-                  ref={videoRef}
-                  playsInline
-                  muted
-                  autoPlay
-                  className="w-full h-full object-cover"
-                />
-                {/* Visual scanline */}
-                <div className="absolute inset-x-8 top-1/2 h-0.5 bg-primary/80 animate-pulse shadow-sm" />
-                {/* Corner guides */}
-                <div className="absolute inset-8 pointer-events-none">
-                  <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white rounded-tl-lg" />
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white rounded-tr-lg" />
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white rounded-bl-lg" />
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white rounded-br-lg" />
+            {/* Video element is permanently mounted to keep ref and stream intact */}
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              className={`w-full h-full object-cover transition-opacity duration-300 ${
+                isCameraActive ? 'opacity-100' : 'opacity-0'
+              }`}
+            />
+
+            {/* Starting Camera State */}
+            {cameraLoading && (
+              <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center text-white space-y-3 z-10">
+                <Loader2 className="w-8 h-8 animate-spin text-[#4a7cf6]" />
+                <span className="text-xs font-semibold text-slate-300 tracking-wide">Starting Camera...</span>
+              </div>
+            )}
+
+            {/* Verification In Progress Overlay */}
+            {actionLoading && (
+              <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center text-white space-y-3 z-20">
+                <div className="w-12 h-12 rounded-2xl bg-[#4a7cf6]/20 border border-[#4a7cf6]/40 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#4a7cf6]" />
+                </div>
+                <div className="text-center space-y-1">
+                  <div className="text-sm font-bold text-white">Verifying Desk Code...</div>
+                  <p className="text-[11px] text-slate-400">Connecting to Turing Hall reservation system</p>
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center p-6 text-center select-none">
-                {/* Corner bracket guides matching mockup */}
-                <div className="relative w-36 h-36 flex flex-col items-center justify-center">
-                  <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-slate-400 dark:border-slate-500 rounded-tl-lg" />
-                  <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-slate-400 dark:border-slate-500 rounded-tr-lg" />
-                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-slate-400 dark:border-slate-500 rounded-bl-lg" />
-                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-slate-400 dark:border-slate-500 rounded-br-lg" />
+            )}
 
-                  <CameraOff className="w-8 h-8 text-slate-400 dark:text-slate-500 mb-2 stroke-[1.5]" />
-                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                    Camera off
+            {/* Realistic HUD Scanner Overlay when Camera is Active */}
+            {isCameraActive && !cameraLoading && (
+              <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                {/* Live Camera Badge */}
+                <div className="absolute top-3.5 left-3.5 pointer-events-auto px-2.5 py-1 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 flex items-center gap-2 text-[10px] font-bold text-white tracking-wider uppercase">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Live Scanner</span>
+                </div>
+
+                {/* Flip / Switch Camera Button */}
+                <button
+                  type="button"
+                  onClick={switchCamera}
+                  className="absolute top-3.5 right-3.5 pointer-events-auto p-2 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 text-white/80 hover:text-white hover:bg-black/80 transition-colors cursor-pointer"
+                  title="Switch camera"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+
+                {/* Centered Target Cutout Box with Vignette Mask */}
+                <div className="relative w-56 h-56 sm:w-64 sm:h-64 rounded-2xl shadow-[0_0_0_9999px_rgba(10,15,25,0.65)] border border-white/20">
+                  {/* Glowing Futuristic Corner Targeting Brackets */}
+                  <div className="absolute -top-1 -left-1 w-7 h-7 border-t-3 border-l-3 border-[#4a7cf6] rounded-tl-xl shadow-[0_0_8px_rgba(74,124,246,0.7)]" />
+                  <div className="absolute -top-1 -right-1 w-7 h-7 border-t-3 border-r-3 border-[#4a7cf6] rounded-tr-xl shadow-[0_0_8px_rgba(74,124,246,0.7)]" />
+                  <div className="absolute -bottom-1 -left-1 w-7 h-7 border-b-3 border-l-3 border-[#4a7cf6] rounded-bl-xl shadow-[0_0_8px_rgba(74,124,246,0.7)]" />
+                  <div className="absolute -bottom-1 -right-1 w-7 h-7 border-b-3 border-r-3 border-[#4a7cf6] rounded-br-xl shadow-[0_0_8px_rgba(74,124,246,0.7)]" />
+
+                  {/* Laser Scan Beam sweeping up and down */}
+                  <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-[#4a7cf6] to-transparent shadow-[0_0_12px_#4a7cf6] animate-qr-scan" />
+
+                  {/* Target Crosshairs */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-30">
+                    <div className="w-4 h-0.5 bg-white rounded-full" />
+                    <div className="h-4 w-0.5 bg-white rounded-full absolute" />
+                  </div>
+                </div>
+
+                {/* Guidance Pill Badge */}
+                <div className="mt-4 px-3.5 py-1.5 rounded-full bg-black/70 backdrop-blur-md border border-white/10 text-[11px] font-semibold text-white/90 flex items-center gap-2 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span>Point camera at desk QR sticker</span>
+                </div>
+              </div>
+            )}
+
+            {/* Camera Off Placeholder Overlay */}
+            {!isCameraActive && !cameraLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center select-none bg-slate-900/90 backdrop-blur-xs z-10">
+                <div className="relative w-36 h-36 flex flex-col items-center justify-center mb-2">
+                  <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-slate-500 rounded-tl-lg" />
+                  <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-slate-500 rounded-tl-lg" />
+                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-slate-500 rounded-bl-lg" />
+                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-slate-500 rounded-br-lg" />
+
+                  <CameraOff className="w-9 h-9 text-slate-400 mb-2 stroke-[1.5]" />
+                  <span className="text-xs font-semibold text-slate-400">
+                    Camera is off
                   </span>
                 </div>
-                <span className="text-[11px] text-muted-foreground mt-4">
-                  Your camera preview will appear here
-                </span>
+                <p className="text-xs text-slate-400 max-w-xs mt-1">
+                  Click &quot;Turn camera on&quot; to scan your workstation QR sticker.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => startCamera()}
+                  className="mt-4 gap-2 text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20 cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Turn camera on</span>
+                </Button>
               </div>
             )}
           </div>
@@ -616,17 +789,31 @@ export function QrCheckIn({
             <Button
               onClick={toggleCamera}
               size="sm"
-              className="gap-2 px-5 font-semibold text-xs rounded-xl shadow-xs"
+              variant={isCameraActive ? 'outline' : 'default'}
+              className="gap-2 px-5 font-semibold text-xs rounded-xl shadow-xs cursor-pointer"
             >
-              <Camera className="w-3.5 h-3.5" />
-              <span>{isCameraActive ? 'Stop camera' : 'Open camera'}</span>
+              {isCameraActive ? <CameraOff className="w-3.5 h-3.5" /> : <Camera className="w-3.5 h-3.5" />}
+              <span>{isCameraActive ? 'Turn camera off' : 'Turn camera on'}</span>
             </Button>
+
+            {isCameraActive && (
+              <Button
+                onClick={switchCamera}
+                variant="outline"
+                size="sm"
+                className="gap-2 px-4 font-semibold text-xs rounded-xl cursor-pointer"
+                title="Switch between front and back camera"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Flip camera</span>
+              </Button>
+            )}
 
             <Button
               onClick={() => fileInputRef.current?.click()}
               variant="outline"
               size="sm"
-              className="gap-2 px-5 font-semibold text-xs rounded-xl"
+              className="gap-2 px-5 font-semibold text-xs rounded-xl cursor-pointer"
             >
               <UploadCloud className="w-3.5 h-3.5" />
               <span>Upload QR image</span>
@@ -644,31 +831,6 @@ export function QrCheckIn({
           <p className="text-[11px] text-muted-foreground text-center">
             Allow camera access when prompted, then hold the desk QR inside the guides.
           </p>
-
-          {/* Direct simulation / manual code options */}
-          <div className="flex justify-center items-center gap-3 pt-1 text-xs text-muted-foreground">
-            {activeReservation && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleSimulateCheckIn}
-                  disabled={actionLoading}
-                  className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline cursor-pointer disabled:opacity-50"
-                >
-                  {actionLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                  <span>Quick check-in desk {displaySeatCode}</span>
-                </button>
-                <span>·</span>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={() => setManualModalOpen(true)}
-              className="hover:underline cursor-pointer"
-            >
-              Enter code manually
-            </button>
-          </div>
 
           {/* Notice Box at Bottom of Card */}
           <div className="rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40 p-3.5 flex items-start gap-2.5">
@@ -696,72 +858,45 @@ export function QrCheckIn({
         </div>
       </div>
 
-      {/* Wrong Seat Warning Modal */}
-      <Dialog open={!!wrongSeatModal} onOpenChange={(open) => !open && setWrongSeatModal(null)}>
+      {/* Alert Error Modal (Wrong seat, invalid QR, check-in failure) */}
+      <Dialog
+        open={!!qrAlertModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setQrAlertModal(null);
+            isProcessingRef.current = false;
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl">
           <DialogHeader>
-            <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center mb-2">
+            <div
+              className={`w-12 h-12 rounded-xl flex items-center justify-center mb-2 ${
+                qrAlertModal?.type === 'warning'
+                  ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600'
+                  : 'bg-red-50 dark:bg-red-950/40 text-red-600'
+              }`}
+            >
               <AlertTriangle className="w-6 h-6" />
             </div>
             <DialogTitle className="text-base font-bold text-foreground">
-              Different Desk Scanned
+              {qrAlertModal?.title || 'Scan Error'}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-2 leading-relaxed">
-              {wrongSeatModal?.message}
+              {qrAlertModal?.message}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4 flex gap-2">
+          <DialogFooter className="mt-4 flex justify-end gap-2">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setWrongSeatModal(null)}
-              className="text-xs font-semibold"
-            >
-              Got it
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Manual Code Input Modal */}
-      <Dialog open={manualModalOpen} onOpenChange={setManualModalOpen}>
-        <DialogContent className="sm:max-w-[400px] p-6 rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-foreground">
-              Enter Desk Code
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-1">
-              Type the desk code or token printed on your physical desk sticker (e.g. A1, B2, GT1-1).
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <Input
-              value={manualCode}
-              onChange={(e) => setManualCode(e.target.value)}
-              placeholder="e.g. A1 or QR-SELAB101-A1"
-              className="font-mono text-sm"
-              autoFocus
-            />
-          </div>
-          <DialogFooter className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setManualModalOpen(false)}
-              className="text-xs"
-            >
-              Cancel
-            </Button>
-            <Button
+              variant="default"
               size="sm"
               onClick={() => {
-                setManualModalOpen(false);
-                handleProcessQrToken(manualCode);
+                setQrAlertModal(null);
+                isProcessingRef.current = false;
               }}
-              disabled={!manualCode.trim()}
-              className="text-xs font-semibold"
+              className="text-xs font-semibold px-4"
             >
-              Check in
+              Try Again
             </Button>
           </DialogFooter>
         </DialogContent>

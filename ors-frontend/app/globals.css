@@ -90,3 +90,22 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+@keyframes qr-scan-laser {
+  0% {
+    top: 6%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 6%;
+    opacity: 0.8;
+  }
+}
+
+.animate-qr-scan {
+  animation: qr-scan-laser 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

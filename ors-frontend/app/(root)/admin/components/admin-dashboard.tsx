@@ -92,6 +92,7 @@ import {
   History,
   UserCog,
   QrCode,
+  Download,
 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
@@ -259,9 +260,9 @@ export function AdminDashboard({
       const list = await Promise.all(
         roomData.seats.map(async (seat) => {
           const dataUrl = await QRCode.toDataURL(seat.qrToken, {
-            width: 200,
+            width: 300,
             margin: 2,
-            color: { dark: '#2d3748', light: '#ffffff' },
+            color: { dark: '#1e293b', light: '#ffffff' },
           });
           return { seat, dataUrl };
         }),
@@ -271,6 +272,31 @@ export function AdminDashboard({
       showToast('Failed to generate QR codes', 'error');
     } finally {
       setGeneratingQrs(false);
+    }
+  };
+
+  // Download QR code as PNG image
+  const handleDownloadQr = (seat: Seat, dataUrl: string) => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `QR-${seat.seatCode}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast(`Downloaded QR code for ${seat.seatCode}`, 'success');
+  };
+
+  // Download QR code directly for a single seat
+  const handleDownloadSeatQr = async (seat: Seat) => {
+    try {
+      const dataUrl = await QRCode.toDataURL(seat.qrToken, {
+        width: 350,
+        margin: 2,
+        color: { dark: '#1e293b', light: '#ffffff' },
+      });
+      handleDownloadQr(seat, dataUrl);
+    } catch {
+      showToast(`Failed to generate QR code for ${seat.seatCode}`, 'error');
     }
   };
 
@@ -1554,7 +1580,17 @@ export function AdminDashboard({
                             </Badge>
                           </td>
                           <td className="py-3.5 px-6 font-mono text-[11px] text-slate-400">
-                            {s.qrToken}
+                            <div className="flex items-center gap-2">
+                              <span>{s.qrToken}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadSeatQr(s)}
+                                title={`Download QR code for ${s.seatCode}`}
+                                className="p-1 text-slate-400 hover:text-[#4a7cf6] hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                           <td className="py-3.5 px-6 text-right">
                             <div className="flex items-center justify-end gap-1.5">
@@ -1745,11 +1781,24 @@ export function AdminDashboard({
                         {adminSelectedSeat.tableType === 'GROUP' ? `Group (Table ${adminSelectedSeat.groupTableId || 1})` : 'Individual Desk'}
                       </span>
                     </div>
-                    <div className="p-3 rounded-xl bg-[#f8fafc] dark:bg-slate-900/60 border border-[#edf1f7] dark:border-slate-800">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">QR Token Code</span>
-                      <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate mt-0.5 block">
-                        {adminSelectedSeat.qrToken}
-                      </span>
+                    <div className="p-3 rounded-xl bg-[#f8fafc] dark:bg-slate-900/60 border border-[#edf1f7] dark:border-slate-800 flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">QR Token Code</span>
+                        <span className="font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-300 truncate mt-0.5 block">
+                          {adminSelectedSeat.qrToken}
+                        </span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDownloadSeatQr(adminSelectedSeat)}
+                        title={`Download QR code for ${adminSelectedSeat.seatCode}`}
+                        className="h-7 px-2 text-[10px] gap-1 font-bold text-[#4a7cf6] hover:bg-[#4a7cf6]/10 rounded-lg cursor-pointer shrink-0"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Download</span>
+                      </Button>
                     </div>
                     <div className="p-3 rounded-xl bg-[#f8fafc] dark:bg-slate-900/60 border border-[#edf1f7] dark:border-slate-800">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Current Usage</span>
@@ -3121,23 +3170,36 @@ export function AdminDashboard({
                 {generatedQrs.map(({ seat, dataUrl }) => (
                   <div
                     key={seat.id}
-                    className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card text-center space-y-2 shadow-3xs"
+                    className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-card text-center space-y-2.5 shadow-3xs flex flex-col justify-between"
                   >
-                    <div className="font-extrabold text-sm text-foreground">
-                      {seat.seatCode}
+                    <div className="space-y-1.5">
+                      <div className="font-extrabold text-sm text-foreground">
+                        {seat.seatCode}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-medium">
+                        {seat.podLabel}
+                      </div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={dataUrl}
+                        alt={seat.seatCode}
+                        className="w-32 h-32 mx-auto rounded-lg border border-slate-100 dark:border-slate-800"
+                      />
+                      <div className="font-mono text-[9px] text-slate-400 truncate">
+                        {seat.qrToken}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-muted-foreground font-medium">
-                      {seat.podLabel}
-                    </div>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={dataUrl}
-                      alt={seat.seatCode}
-                      className="w-32 h-32 mx-auto rounded-lg border border-slate-100 dark:border-slate-800"
-                    />
-                    <div className="font-mono text-[9px] text-slate-400 truncate">
-                      {seat.qrToken}
-                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownloadQr(seat, dataUrl)}
+                      className="w-full h-8 text-[11px] font-semibold gap-1.5 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-[#4a7cf6]/10 hover:text-[#4a7cf6] hover:border-[#4a7cf6]/30 transition-colors cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download QR</span>
+                    </Button>
                   </div>
                 ))}
               </div>
