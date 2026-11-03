@@ -56,14 +56,14 @@ public class OccupancyRoomIntegrationTest {
     @Test
     void testQuickLogin() throws Exception {
         QuickLoginRequest req = new QuickLoginRequest();
-        req.setEmail("alex.chen@student.university.edu");
+        req.setEmail("admin@gmail.com");
 
         mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
-                .andExpect(jsonPath("$.data.email", is("alex.chen@student.university.edu")));
+                .andExpect(jsonPath("$.data.email", is("admin@gmail.com")));
     }
 
     @Test
