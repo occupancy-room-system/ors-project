@@ -254,12 +254,12 @@ export function FloorPlan2D({
       <button
         type="button"
         onClick={() => onSelectSeat(seat)}
-        className={`rounded-lg border px-2.5 py-1.5 flex items-center justify-between gap-1.5 transition-all cursor-pointer shadow-3xs select-none ${bgBorder} ${
+        className={`rounded-lg border px-2 py-1.5 flex items-center justify-between gap-1.5 transition-all cursor-pointer shadow-3xs select-none min-w-[64px] ${bgBorder} ${
           dimmed ? 'opacity-25 grayscale-[0.6]' : 'opacity-100'
         } ${customClass}`}
         title={`${seat.seatCode} - ${seat.status}`}
       >
-        <span className="font-semibold text-xs leading-none tracking-tight">{label}</span>
+        <span className="font-semibold text-xs leading-none tracking-tight whitespace-nowrap">{label}</span>
         {icon}
       </button>
     );
@@ -513,23 +513,23 @@ export function FloorPlan2D({
 
         {/* Scalable Layout Board */}
         <div
-          className="min-w-[960px] mx-auto transition-transform origin-top flex flex-row gap-6 items-start justify-between"
+          className="min-w-[1080px] w-full mx-auto transition-transform origin-top flex flex-row gap-6 lg:gap-8 items-start justify-between"
           style={{ transform: `scale(${zoomLevel / 100})` }}
         >
           {/* Main Area: Stations A-E, Group Tables 1, 3, 5 */}
-          <div className="flex-1 flex flex-col gap-6">
+          <div className="flex-1 min-w-0 flex flex-col gap-6">
             {/* ROW 1: Station A, Station B, Group table 1 */}
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4 sm:gap-5">
               {/* Station A */}
               {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-56 flex-1 max-w-[280px]">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station A</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
                       {stationASeats.length} desks
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={`grid ${stationASeats.length > 9 ? 'grid-cols-4' : stationASeats.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
                     {stationASeats.map((seat) => (
                       <DeskItem
                         key={seat.id || seat.seatCode}
@@ -544,14 +544,14 @@ export function FloorPlan2D({
 
               {/* Station B */}
               {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-56 flex-1 max-w-[280px]">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station B</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
                       {stationBSeats.length} desks
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={`grid ${stationBSeats.length > 9 ? 'grid-cols-4' : stationBSeats.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
                     {stationBSeats.map((seat) => (
                       <DeskItem
                         key={seat.id || seat.seatCode}
@@ -566,14 +566,14 @@ export function FloorPlan2D({
 
               {/* Group table 1 */}
               {(filterMode === "ALL" || filterMode === "GROUP") && (
-                <div className="min-w-40 min-h-40 rounded-full bg-slate-100/90 dark:bg-slate-700/80 p-3.5 flex flex-col items-center justify-center shadow-2xs shrink-0 ml-4">
+                <div className="rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all ml-2">
                   <span className="font-bold text-xs text-foreground text-center">
                     Group table 1
                   </span>
                   <span className="text-[10px] text-gray-400 text-center mb-2.5">
                     {gt1Seats.length} shared desks
                   </span>
-                  <div className="flex items-center flex-wrap justify-center gap-1.5 max-w-[140px]">
+                  <div className={`grid ${gt1Seats.length > 6 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 w-full justify-items-center`}>
                     {gt1Seats.map((seat) => (
                       <DeskItem
                         key={seat.id || seat.seatCode}
@@ -581,7 +581,6 @@ export function FloorPlan2D({
                         podLabel="Group table 1"
                         groupTableId={1}
                         tableType="GROUP"
-                        customClass="w-14 px-1.5"
                       />
                     ))}
                   </div>
@@ -595,17 +594,17 @@ export function FloorPlan2D({
             </div>
 
             {/* ROW 2: Group table 3, Station C, Station D, Station E */}
-            <div className="flex items-center gap-12">
+            <div className="flex items-center gap-4 sm:gap-5">
               {/* Group table 3 */}
               {(filterMode === "ALL" || filterMode === "GROUP") && (
-                <div className="w-50 h-50 rounded-full bg-slate-100/90 dark:bg-slate-700/80 p-3 flex flex-col items-center justify-center shadow-2xs shrink-0">
+                <div className="rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all">
                   <span className="font-bold text-xs text-foreground text-center">
                     Group table 3
                   </span>
                   <span className="text-[10px] text-gray-400 text-center mb-2">
                     {gt3Seats.length} shared desks
                   </span>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid ${gt3Seats.length > 8 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 w-full justify-items-center`}>
                     {gt3Seats.map((seat) => (
                       <DeskItem
                         key={seat.id || seat.seatCode}
@@ -613,7 +612,6 @@ export function FloorPlan2D({
                         podLabel="Group table 3"
                         groupTableId={3}
                         tableType="GROUP"
-                        customClass="w-14 px-1.5"
                       />
                     ))}
                   </div>
@@ -622,14 +620,14 @@ export function FloorPlan2D({
 
               {/* Station C */}
               {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-44 flex-1">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station C</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
                       {stationCSeats.length} desks
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid ${stationCSeats.length > 6 ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
                     {stationCSeats.map((seat) => (
                       <DeskItem
                         key={seat.id || seat.seatCode}
@@ -644,14 +642,14 @@ export function FloorPlan2D({
 
               {/* Station D */}
               {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-36">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[110px] w-auto shrink-0 transition-all">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station D</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
                       {stationDSeats.length} desks
                     </span>
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className={stationDSeats.length > 4 ? 'grid grid-cols-2 gap-2' : 'flex flex-col gap-2'}>
                     {stationDSeats.map((seat) => (
                       <DeskItem
                         key={seat.id || seat.seatCode}
@@ -667,14 +665,14 @@ export function FloorPlan2D({
 
               {/* Station E */}
               {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-44 flex-1">
+                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station E</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
                       {stationESeats.length} desks
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid ${stationESeats.length > 6 ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
                     {stationESeats.map((seat) => (
                       <DeskItem
                         key={seat.id || seat.seatCode}
@@ -692,14 +690,14 @@ export function FloorPlan2D({
             <div className="flex items-center justify-between gap-6 pt-2">
               {/* Group table 5 */}
               {(filterMode === "ALL" || filterMode === "GROUP") && (
-                <div className="rounded-3xl bg-slate-100/90 dark:bg-slate-700/80 px-6 py-4 flex flex-col items-center shadow-2xs">
+                <div className="rounded-[28px] sm:rounded-[32px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 px-5 py-4 flex flex-col items-center shadow-2xs min-w-[240px] w-auto h-auto transition-all">
                   <span className="font-bold text-xs text-foreground text-center">
                     Group table 5
                   </span>
                   <span className="text-[10px] text-gray-400 text-center mb-3">
                     {gt5Seats.length} shared desks
                   </span>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className={`grid ${gt5Seats.length <= 4 ? 'grid-cols-2 sm:grid-cols-4' : gt5Seats.length <= 8 ? 'grid-cols-4' : 'grid-cols-4 lg:grid-cols-6'} gap-2 justify-items-center`}>
                     {gt5Seats.map((seat) => (
                       <DeskItem
                         key={seat.id || seat.seatCode}
@@ -707,7 +705,6 @@ export function FloorPlan2D({
                         podLabel="Group table 5"
                         groupTableId={5}
                         tableType="GROUP"
-                        customClass="w-16 px-1.5"
                       />
                     ))}
                   </div>
@@ -768,7 +765,7 @@ export function FloorPlan2D({
                   {customPods.map(([podName, podSeats]) => (
                     <div
                       key={podName}
-                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-48"
+                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[200px] w-auto transition-all"
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-foreground">{podName}</span>
@@ -776,7 +773,7 @@ export function FloorPlan2D({
                           {podSeats.length} desks
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className={`grid ${podSeats.length > 8 ? 'grid-cols-4' : podSeats.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'} gap-2`}>
                         {podSeats.map((seat) => (
                           <DeskItem
                             key={seat.id || seat.seatCode}
@@ -797,14 +794,14 @@ export function FloorPlan2D({
           {(filterMode === "ALL" || filterMode === "GROUP") && (
             <div className="flex flex-col gap-8 shrink-0 items-center justify-between">
               {/* Group table 2 */}
-              <div className="w-40 rounded-3xl bg-slate-100/90 dark:bg-slate-700/80 p-3.5 flex flex-col items-center shadow-2xs">
+              <div className="min-w-[180px] w-auto h-auto rounded-[28px] sm:rounded-[32px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center shadow-2xs transition-all">
                 <span className="font-bold text-xs text-foreground text-center">
                   Group table 2
                 </span>
                 <span className="text-[10px] text-gray-400 text-center mb-3">
                   {gt2Seats.length} shared desks
                 </span>
-                <div className="grid grid-cols-2 gap-2 mb-2 w-full">
+                <div className={`grid ${gt2Seats.length > 8 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-1 w-full justify-items-center`}>
                   {gt2Seats.map((seat) => (
                     <DeskItem
                       key={seat.id || seat.seatCode}
@@ -812,21 +809,20 @@ export function FloorPlan2D({
                       podLabel="Group table 2"
                       groupTableId={2}
                       tableType="GROUP"
-                      customClass="px-1.5"
                     />
                   ))}
                 </div>
               </div>
 
               {/* Group table 4 */}
-              <div className="w-50 rounded-3xl bg-slate-100/90 dark:bg-slate-700/80 p-3.5 flex flex-col items-center shadow-2xs">
+              <div className="min-w-[180px] w-auto h-auto rounded-[28px] sm:rounded-[32px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center shadow-2xs transition-all">
                 <span className="font-bold text-xs text-foreground text-center">
                   Group table 4
                 </span>
                 <span className="text-[10px] text-gray-400 text-center mb-3">
                   {gt4Seats.length} shared desks
                 </span>
-                <div className="grid grid-cols-2 gap-2 mb-2 w-full">
+                <div className={`grid ${gt4Seats.length > 8 ? 'grid-cols-3' : 'grid-cols-2'} gap-2 mb-1 w-full justify-items-center`}>
                   {gt4Seats.map((seat) => (
                     <DeskItem
                       key={seat.id || seat.seatCode}
@@ -834,7 +830,6 @@ export function FloorPlan2D({
                       podLabel="Group table 4"
                       groupTableId={4}
                       tableType="GROUP"
-                      customClass="px-1.5"
                     />
                   ))}
                 </div>
