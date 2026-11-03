@@ -106,6 +106,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [activeSessionOverride, setActiveSessionOverride] = useState<OccupancySession | null | undefined>(undefined);
 
+  // Sync activeSessionOverride when fresh activeSessionData arrives from query
+  useEffect(() => {
+    if (activeSessionData !== undefined) {
+      setActiveSessionOverride(activeSessionData);
+    }
+  }, [activeSessionData]);
+
   const activeSession = activeSessionOverride !== undefined ? activeSessionOverride : (activeSessionData ?? null);
 
   const setActiveSession = useCallback((s: OccupancySession | null) => {
