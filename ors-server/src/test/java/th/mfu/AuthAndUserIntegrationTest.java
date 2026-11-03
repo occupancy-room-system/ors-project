@@ -49,14 +49,18 @@ class AuthAndUserIntegrationTest {
                 "John Doe"
         );
 
-        mockMvc.perform(post("/api/auth/register")
+        MvcResult registerResult = mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success", is(true)))
                 .andExpect(jsonPath("$.data.username", is("john_doe")))
                 .andExpect(jsonPath("$.data.email", is("john@example.com")))
-                .andExpect(jsonPath("$.data.password").doesNotExist()); // Ensure password is never exposed
+                .andExpect(jsonPath("$.data.password").doesNotExist()) // Ensure password is never exposed
+                .andReturn();
+
+        Long userId = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .path("data").path("id").asLong();
 
         // 2. Duplicate registration should fail with 400 Bad Request
         mockMvc.perform(post("/api/auth/register")
@@ -92,15 +96,11 @@ class AuthAndUserIntegrationTest {
                 .andExpect(status().isForbidden());
 
         // 6. Access /api/users with valid token
-        MvcResult usersResult = mockMvc.perform(get("/api/users")
+        mockMvc.perform(get("/api/users")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
-                .andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))))
-                .andReturn();
-
-        Long userId = objectMapper.readTree(usersResult.getResponse().getContentAsString())
-                .path("data").get(0).path("id").asLong();
+                .andExpect(jsonPath("$.data", hasSize(greaterThanOrEqualTo(1))));
 
         // 7. Update user
         UserUpdateRequest updateRequest = new UserUpdateRequest("john.updated@example.com", "Johnathan Doe", null);
