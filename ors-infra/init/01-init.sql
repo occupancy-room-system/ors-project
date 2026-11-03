@@ -135,25 +135,10 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- ==============================================================================
 
 -- 1. Insert Initial Users
--- Password for admin: AdminPass123! ($2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e)
--- Password for students: StudentPass123! ($2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e)
+-- Default Admin: admin@gmail.com / admin123
 INSERT INTO users (id, username, email, password, full_name, role, account_status) VALUES
-(1, 'admin', 'admin@university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Prof. Robert Vance (Admin)', 'ADMINISTRATOR', 'ACTIVE'),
-(2, 'alex.chen', 'alex.chen@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Alex Chen (Student)', 'STUDENT', 'ACTIVE'),
-(3, 'sarah.kim', 'sarah.kim@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Sarah Kim (Student)', 'STUDENT', 'ACTIVE'),
-(4, 'marcus.taylor', 'marcus.taylor@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Marcus Taylor (Student)', 'STUDENT', 'ACTIVE'),
-(5, 'emily.zhao', 'emily.zhao@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Emily Zhao (Student)', 'STUDENT', 'ACTIVE'),
-(6, 'david.wong', 'david.wong@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'David Wong (Student)', 'STUDENT', 'ACTIVE'),
-(7, 'lisa.tanaka', 'lisa.tanaka@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Lisa Tanaka (Student)', 'STUDENT', 'ACTIVE'),
-(8, 'james.rodriguez', 'james.rodriguez@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'James Rodriguez (Student)', 'STUDENT', 'ACTIVE'),
-(9, 'priya.patel', 'priya.patel@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Priya Patel (Student)', 'STUDENT', 'ACTIVE'),
-(10, 'daniel.lee', 'daniel.lee@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Daniel Lee (Student)', 'STUDENT', 'ACTIVE'),
-(11, 'chloe.dupont', 'chloe.dupont@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Chloe Dupont (Student)', 'STUDENT', 'ACTIVE'),
-(12, 'ethan.brown', 'ethan.brown@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Ethan Brown (Student)', 'STUDENT', 'ACTIVE'),
-(13, 'sophia.martinez', 'sophia.martinez@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Sophia Martinez (Student)', 'STUDENT', 'ACTIVE'),
-(14, 'liam.wilson', 'liam.wilson@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Liam Wilson (Student)', 'STUDENT', 'ACTIVE'),
-(15, 'olivia.davis', 'olivia.davis@student.university.edu', '$2a$10$4n92s0iVpXwZc7oZ2F8d.eaQ9eY4u1k3l6x5z4A8m7k6j5h4g3f2e', 'Olivia Davis (Student)', 'STUDENT', 'ACTIVE')
-ON DUPLICATE KEY UPDATE full_name=VALUES(full_name);
+(1, 'admin', 'admin@gmail.com', '$2a$10$uZYEMe2RQpmzfWikGeYJtuZCZH.b4uiNUD.xBsYr.pSczrESmBEd2', 'Administrator', 'ADMINISTRATOR', 'ACTIVE')
+ON DUPLICATE KEY UPDATE email=VALUES(email), password=VALUES(password), role=VALUES(role), account_status=VALUES(account_status);
 
 -- 2. Insert Main Laboratory Room
 INSERT INTO rooms (id, room_code, name, description, building, floor_level, width_units, height_units, status) VALUES
@@ -163,9 +148,9 @@ ON DUPLICATE KEY UPDATE name=VALUES(name);
 -- 3. Insert All 54 Workstation Seats
 INSERT INTO seats (id, room_id, seat_code, x_position, y_position, pod_label, table_type, group_table_id, group_table_name, group_capacity, status, qr_token) VALUES
 -- Station A (6 Individual Desks)
-(1, 1, 'SEAT-A1', 2, 2, 'Station A', 'INDIVIDUAL', NULL, NULL, NULL, 'RESERVED', 'QR-SELAB101-A1'),
+(1, 1, 'SEAT-A1', 2, 2, 'Station A', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-A1'),
 (2, 1, 'SEAT-A2', 3, 2, 'Station A', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-A2'),
-(3, 1, 'SEAT-A3', 4, 2, 'Station A', 'INDIVIDUAL', NULL, NULL, NULL, 'OCCUPIED', 'QR-SELAB101-A3'),
+(3, 1, 'SEAT-A3', 4, 2, 'Station A', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-A3'),
 (4, 1, 'SEAT-A4', 2, 3, 'Station A', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-A4'),
 (5, 1, 'SEAT-A5', 3, 3, 'Station A', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-A5'),
 (6, 1, 'SEAT-A6', 4, 3, 'Station A', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-A6'),
@@ -175,7 +160,7 @@ INSERT INTO seats (id, room_id, seat_code, x_position, y_position, pod_label, ta
 (8, 1, 'SEAT-B2', 7, 2, 'Station B', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-B2'),
 (9, 1, 'SEAT-B3', 8, 2, 'Station B', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-B3'),
 (10, 1, 'SEAT-B4', 6, 3, 'Station B', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-B4'),
-(11, 1, 'SEAT-B5', 7, 3, 'Station B', 'INDIVIDUAL', NULL, NULL, NULL, 'EXPIRING_SOON', 'QR-SELAB101-B5'),
+(11, 1, 'SEAT-B5', 7, 3, 'Station B', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-B5'),
 (12, 1, 'SEAT-B6', 8, 3, 'Station B', 'INDIVIDUAL', NULL, NULL, NULL, 'AVAILABLE', 'QR-SELAB101-B6'),
 
 -- Group Table 1 (2 Desks)
@@ -237,18 +222,7 @@ INSERT INTO seats (id, room_id, seat_code, x_position, y_position, pod_label, ta
 (54, 1, 'SEAT-GT5-6', 8, 9, 'Group Table 5', 'GROUP', 5, 'Group Table 5', 6, 'AVAILABLE', 'QR-SELAB101-GT5-6')
 ON DUPLICATE KEY UPDATE seat_code=VALUES(seat_code);
 
--- 4. Initial Reservations
-INSERT INTO reservations (id, user_id, user_name, user_email, seat_id, seat_code, pod_label, start_time, duration_hours, expires_at, status) VALUES
-(1, 2, 'Alex Chen (Student)', 'alex.chen@student.university.edu', 1, 'SEAT-A1', 'Station A', DATE_ADD(NOW(), INTERVAL 15 MINUTE), 2, DATE_ADD(NOW(), INTERVAL 35 MINUTE), 'PENDING_ACTIVATION')
-ON DUPLICATE KEY UPDATE status=VALUES(status);
-
--- 5. Initial Active Occupancy Sessions
-INSERT INTO occupancy_sessions (id, user_id, seat_id, checked_in_at, expires_at, status) VALUES
-(1, 6, 3, DATE_SUB(NOW(), INTERVAL 45 MINUTE), DATE_ADD(NOW(), INTERVAL 75 MINUTE), 'ACTIVE'),
-(2, 4, 11, DATE_SUB(NOW(), INTERVAL 110 MINUTE), DATE_ADD(NOW(), INTERVAL 10 MINUTE), 'ACTIVE')
-ON DUPLICATE KEY UPDATE status=VALUES(status);
-
--- 6. Initial Audit Log
+-- 4. Initial Audit Log
 INSERT INTO audit_logs (id, actor_user_id, action, entity_type, entity_id, details) VALUES
 (1, 1, 'SYSTEM_INITIALIZATION', 'SYSTEM', '1', '{"note": "Initial room and 54 workstations created for SE Lab 101"}')
 ON DUPLICATE KEY UPDATE action=VALUES(action);

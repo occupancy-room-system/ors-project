@@ -8,6 +8,7 @@ import th.mfu.dto.request.UserUpdateRequest;
 import th.mfu.dto.response.UserResponse;
 import th.mfu.entity.OccupancySession;
 import th.mfu.entity.Reservation;
+import th.mfu.entity.Role;
 import th.mfu.entity.User;
 import th.mfu.exception.BadRequestException;
 import th.mfu.exception.ResourceNotFoundException;
@@ -24,16 +25,19 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
     private final OccupancySessionRepository occupancySessionRepository;
     private final ReservationRepository reservationRepository;
     private final SeatRepository seatRepository;
 
     public UserServiceImpl(
             UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
             OccupancySessionRepository occupancySessionRepository,
             ReservationRepository reservationRepository,
             SeatRepository seatRepository) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
         this.occupancySessionRepository = occupancySessionRepository;
         this.reservationRepository = reservationRepository;
         this.seatRepository = seatRepository;

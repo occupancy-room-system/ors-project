@@ -38,51 +38,60 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
+        String adminPass = passwordEncoder.encode("admin123");
+
+        // 1. Ensure Default Admin Account (admin@gmail.com / admin123)
+        User admin = userRepository.findByEmail("admin@gmail.com")
+                .or(() -> userRepository.findByUsername("admin"))
+                .or(() -> userRepository.findByEmail("admin@university.edu"))
+                .orElse(null);
+
+        if (admin == null) {
+            admin = new User("admin", "admin@gmail.com", adminPass, "Administrator", Role.ADMINISTRATOR);
+            admin = userRepository.save(admin);
+        } else {
+            admin.setUsername("admin");
+            admin.setEmail("admin@gmail.com");
+            admin.setPassword(adminPass);
+            admin.setRole(Role.ADMINISTRATOR);
+            admin.setAccountStatus("ACTIVE");
+            admin = userRepository.save(admin);
+        }
+
+        // 2. Clean up legacy sample students and dummy session data if present
+        List<User> sampleUsers = userRepository.findAll().stream()
+                .filter(u -> u.getRole() != Role.ADMINISTRATOR && !"admin".equalsIgnoreCase(u.getUsername()))
+                .toList();
+
+        if (!sampleUsers.isEmpty()) {
+            for (User su : sampleUsers) {
+                sessionRepository.deleteAll(sessionRepository.findByUserIdOrderByCheckedInAtDesc(su.getId()));
+                reservationRepository.deleteAll(reservationRepository.findByUserIdOrderByCreatedAtDesc(su.getId()));
+            }
+            userRepository.deleteAll(sampleUsers);
+            System.out.println(">>> Cleared " + sampleUsers.size() + " sample users from previous runs.");
+        }
+
         if (roomRepository.count() > 0) {
-            System.out.println(">>> ORS Database already initialized with " + seatRepository.count() + " workstations.");
+            // Reset any orphaned occupied/reserved seats back to AVAILABLE
+            List<Seat> seats = seatRepository.findAll();
+            boolean updated = false;
+            for (Seat seat : seats) {
+                if ("OCCUPIED".equalsIgnoreCase(seat.getStatus()) || "RESERVED".equalsIgnoreCase(seat.getStatus()) || "EXPIRING_SOON".equalsIgnoreCase(seat.getStatus())) {
+                    seat.setStatus("AVAILABLE");
+                    updated = true;
+                }
+            }
+            if (updated) {
+                seatRepository.saveAll(seats);
+            }
+            System.out.println(">>> ORS Database ready with " + seatRepository.count() + " workstations and default admin: admin@gmail.com");
             return;
         }
 
-        System.out.println(">>> Initializing ORS Database with seed data in MySQL...");
+        System.out.println(">>> Initializing ORS Database with baseline data in MySQL...");
 
-        // 1. Seed Users idempotently
-        List<User> users = new ArrayList<>();
-        String adminPass = passwordEncoder.encode("AdminPass123!");
-        String studentPass = passwordEncoder.encode("StudentPass123!");
-
-        User admin = userRepository.findByUsername("admin")
-                .or(() -> userRepository.findByEmail("admin@university.edu"))
-                .orElseGet(() -> userRepository.save(new User("admin", "admin@university.edu", adminPass, "Prof. Robert Vance (Admin)", Role.ADMINISTRATOR)));
-        users.add(admin);
-
-        String[][] studentsData = {
-                {"alex.chen", "alex.chen@student.university.edu", "Alex Chen (Student)"},
-                {"sarah.kim", "sarah.kim@student.university.edu", "Sarah Kim (Student)"},
-                {"marcus.taylor", "marcus.taylor@student.university.edu", "Marcus Taylor (Student)"},
-                {"emily.zhao", "emily.zhao@student.university.edu", "Emily Zhao (Student)"},
-                {"david.wong", "david.wong@student.university.edu", "David Wong (Student)"},
-                {"lisa.tanaka", "lisa.tanaka@student.university.edu", "Lisa Tanaka (Student)"},
-                {"james.rodriguez", "james.rodriguez@student.university.edu", "James Rodriguez (Student)"},
-                {"priya.patel", "priya.patel@student.university.edu", "Priya Patel (Student)"},
-                {"daniel.lee", "daniel.lee@student.university.edu", "Daniel Lee (Student)"},
-                {"chloe.dupont", "chloe.dupont@student.university.edu", "Chloe Dupont (Student)"},
-                {"ethan.brown", "ethan.brown@student.university.edu", "Ethan Brown (Student)"},
-                {"sophia.martinez", "sophia.martinez@student.university.edu", "Sophia Martinez (Student)"},
-                {"liam.wilson", "liam.wilson@student.university.edu", "Liam Wilson (Student)"},
-                {"olivia.davis", "olivia.davis@student.university.edu", "Olivia Davis (Student)"}
-        };
-
-        for (String[] s : studentsData) {
-            final String username = s[0];
-            final String email = s[1];
-            final String fullName = s[2];
-            User u = userRepository.findByUsername(username)
-                    .or(() -> userRepository.findByEmail(email))
-                    .orElseGet(() -> userRepository.save(new User(username, email, studentPass, fullName, Role.STUDENT)));
-            users.add(u);
-        }
-
-        // 2. Seed Room
+        // 3. Seed Room
         Room room = roomRepository.findByRoomCode("SE-LAB-101")
                 .orElseGet(() -> roomRepository.save(new Room(
                         "SE-LAB-101",
@@ -95,7 +104,7 @@ public class DataInitializer implements CommandLineRunner {
                         "ACTIVE"
                 )));
 
-        // 3. Seed 54 Workstation Seats
+        // 4. Seed 54 Workstation Seats
         List<Seat> seats = new ArrayList<>();
 
         // Station A (6 Individual Desks)
@@ -159,84 +168,16 @@ public class DataInitializer implements CommandLineRunner {
             seats.add(new Seat(room, "SEAT-GT5-" + (i + 1), gt5Coords[i][0], gt5Coords[i][1], "Group Table 5", "GROUP", 5, "Group Table 5", 6, "AVAILABLE", "QR-SELAB101-GT5-" + (i + 1)));
         }
 
-        List<Seat> savedSeats = seatRepository.saveAll(seats);
-
-        // 4. Initial Reservations
-        LocalDateTime now = LocalDateTime.now();
-        Seat seatA1 = savedSeats.get(0);
-        User studentAlex = users.get(1);
-
-        Reservation initialResv = new Reservation();
-        initialResv.setUserId(studentAlex.getId());
-        initialResv.setUserName(studentAlex.getFullName());
-        initialResv.setUserEmail(studentAlex.getEmail());
-        initialResv.setSeatId(seatA1.getId());
-        initialResv.setSeatCode(seatA1.getSeatCode());
-        initialResv.setPodLabel(seatA1.getPodLabel());
-        initialResv.setStartTime(now.plusMinutes(15));
-        initialResv.setDurationHours(2);
-        initialResv.setExpiresAt(now.plusMinutes(35));
-        initialResv.setStatus("PENDING_ACTIVATION");
-        reservationRepository.save(initialResv);
-
-        // 5. Initial Active Sessions
-        Seat seatA3 = savedSeats.get(2);
-        User studentDavid = users.size() > 5 ? users.get(5) : users.get(0);
-        OccupancySession session1 = new OccupancySession();
-        session1.setUserId(studentDavid.getId());
-        session1.setSeatId(seatA3.getId());
-        session1.setCheckedInAt(now.minusMinutes(45));
-        session1.setExpiresAt(now.plusMinutes(75));
-        session1.setStatus("ACTIVE");
-        sessionRepository.save(session1);
-
-        Seat seatB5 = savedSeats.get(10);
-        User studentMarcus = users.size() > 3 ? users.get(3) : users.get(0);
-        OccupancySession session2 = new OccupancySession();
-        session2.setUserId(studentMarcus.getId());
-        session2.setSeatId(seatB5.getId());
-        session2.setCheckedInAt(now.minusMinutes(110));
-        session2.setExpiresAt(now.plusMinutes(10));
-        session2.setStatus("ACTIVE");
-        sessionRepository.save(session2);
-
-        // 6. Seed 90 days of rich completed session history
-        List<OccupancySession> historicalSessions = new ArrayList<>();
-        List<Long> studentIds = users.stream().map(User::getId).toList();
-
-        for (int daysAgo = 90; daysAgo >= 1; daysAgo--) {
-            LocalDateTime dayBase = now.minusDays(daysAgo);
-            int dayOfWeek = dayBase.getDayOfWeek().getValue();
-            int count = (dayOfWeek >= 6) ? (2 + (daysAgo % 2)) : (4 + (daysAgo % 3));
-
-            for (int idx = 0; idx < count; idx++) {
-                Long studentId = studentIds.get((daysAgo * 3 + idx * 2) % studentIds.size());
-                Seat s = savedSeats.get((daysAgo * 5 + idx * 7) % savedSeats.size());
-                int startHour = 8 + (idx * 2) + ((daysAgo % 3));
-                LocalDateTime start = dayBase.withHour(startHour).withMinute(15).withSecond(0);
-                int durationMinutes = 45 + ((daysAgo * 11 + idx * 23) % 95);
-                LocalDateTime end = start.plusMinutes(durationMinutes);
-
-                OccupancySession pastSession = new OccupancySession();
-                pastSession.setUserId(studentId);
-                pastSession.setSeatId(s.getId());
-                pastSession.setCheckedInAt(start);
-                pastSession.setExpiresAt(end);
-                pastSession.setCheckedOutAt(end);
-                pastSession.setStatus("CHECKED_OUT");
-                historicalSessions.add(pastSession);
-            }
-        }
-        sessionRepository.saveAll(historicalSessions);
+        seatRepository.saveAll(seats);
 
         auditLogRepository.save(new AuditLog(
                 admin.getId(),
                 "SYSTEM_INITIALIZATION",
                 "SYSTEM",
                 "1",
-                "{\"note\":\"Database initialized with users, 1 room, 54 workstations, and 90 days of historical sessions.\"}"
+                "{\"note\":\"Database initialized with default administrator (admin@gmail.com), 1 room, and 54 workstations.\"}"
         ));
 
-        System.out.println(">>> ORS Database initialized successfully with 54 workstations!");
+        System.out.println(">>> ORS Database initialized successfully with 54 workstations and default admin: admin@gmail.com");
     }
 }

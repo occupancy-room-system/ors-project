@@ -308,17 +308,17 @@ The frontend is built with Next.js 16 and Tailwind CSS v4, communicating with th
 
 ## 6. Administrator Account & Access
 
-The database is initialized with a dedicated administrator account:
+The database is initialized with a dedicated default administrator account:
 
 | Field | Value |
 | :--- | :--- |
 | **Username** | `admin` |
-| **Email** | `admin@university.edu` |
-| **Password** | `AdminPass123!` |
+| **Email** | `admin@gmail.com` |
+| **Password** | `admin123` |
 | **Role** | `ADMINISTRATOR` |
 | **Admin Route** | [http://localhost:3000/admin](http://localhost:3000/admin) |
 
-You can log in through the modal dialog or top-right profile switcher to perform administrative tasks (adding workstations, updating desk statuses, inspecting sessions, and managing users).
+Team members can sign in with these credentials (using either `admin` or `admin@gmail.com` and password `admin123`) to access the admin dashboard, create/manage workstations, update desk statuses, and inspect sessions.
 
 ---
 

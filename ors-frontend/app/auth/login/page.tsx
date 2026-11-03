@@ -59,7 +59,7 @@ export default function LoginPage() {
       id: role === 'ADMINISTRATOR' ? 1 : 2,
       fullName: name,
       username: id,
-      email: `${id}@student.university.edu`,
+      email: id === 'admin' ? 'admin@gmail.com' : `${id}@student.university.edu`,
       role: role as any,
       accountStatus: 'ACTIVE' as const,
     };
