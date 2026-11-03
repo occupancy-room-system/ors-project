@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { OccupancySession } from '@/types';
 import { ROUTES } from '@/config/routes';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -17,15 +15,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  Clock,
-  AlertTriangle,
   Monitor,
   LogOut,
-  MapPin,
-  Calendar,
-  Sparkles,
+  Info,
+  Clock,
   Loader2,
-  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ActiveSessionCardProps {
@@ -43,6 +38,22 @@ export function ActiveSessionCard({
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
 
+  // Clean seat code for display (e.g. SEAT-A1 -> A1)
+  const formatSeatCode = (rawCode?: string) => {
+    if (!rawCode) return 'A1';
+    let code = rawCode.replace(/^SEAT-/, '');
+    if (code.startsWith('GT')) {
+      const parts = code.replace('GT', '').split('-');
+      if (parts.length === 2) return `G${parts[0]}-D${parts[1]}`;
+    }
+    return code;
+  };
+
+  const displaySeatCode = formatSeatCode(session?.seatCode || 'A1');
+  const podLabel = session?.podLabel || 'Station A';
+  const totalDurationMinutes = session?.durationMinutes || 120;
+  const totalSeconds = totalDurationMinutes * 60;
+
   useEffect(() => {
     if (!session) return;
 
@@ -57,152 +68,199 @@ export function ActiveSessionCard({
     return () => clearInterval(interval);
   }, [session]);
 
+  const hours = Math.floor(secondsLeft / 3600);
+  const minutes = Math.floor((secondsLeft % 3600) / 60);
+
+  const secondsElapsed = Math.max(0, totalSeconds - secondsLeft);
+  const minutesElapsed = Math.min(totalDurationMinutes, Math.floor(secondsElapsed / 60));
+  const percentElapsed = Math.min(100, Math.max(0, (secondsElapsed / totalSeconds) * 100));
+
+  const totalAllocatedText = useMemo(() => {
+    const hrs = Math.floor(totalDurationMinutes / 60);
+    return `${hrs} ${hrs === 1 ? 'hour' : 'hours'}`;
+  }, [totalDurationMinutes]);
+
+  const checkInFormatted = useMemo(() => {
+    if (!session?.checkedInAt) {
+      return { time: '10:30 PM', date: 'Today · Nov 2, 2026' };
+    }
+    const d = new Date(session.checkedInAt);
+    return {
+      time: d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+      date: `Today · ${d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`,
+    };
+  }, [session?.checkedInAt]);
+
+  const expiresFormatted = useMemo(() => {
+    if (!session?.expiresAt) {
+      return { time: '12:30 AM', date: 'Tomorrow · Nov 3, 2026' };
+    }
+    const d = new Date(session.expiresAt);
+    const isTomorrow = d.getDate() !== new Date().getDate();
+    return {
+      time: d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+      date: `${isTomorrow ? 'Tomorrow' : 'Today'} · ${d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`,
+    };
+  }, [session?.expiresAt]);
+
   if (!session) {
     return (
-      <Card className="border-border max-w-xl mx-auto shadow-xs">
-        <CardContent className="pt-10 pb-10 text-center space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
-            <Monitor className="w-7 h-7" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-bold text-foreground">No Active Workstation Session</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-              You do not currently occupy a workstation. Reserve a desk on the 2D floor plan or scan a desk QR code at Turing Hall 101.
-            </p>
-          </div>
-          <div className="flex justify-center gap-2.5 pt-2">
-            <Button
-              onClick={() => router.push(ROUTES.HOME)}
-              variant="outline"
-              size="sm"
-              className="text-xs font-semibold"
-            >
-              2D Floor Plan
-            </Button>
-            <Button
-              onClick={() => router.push(ROUTES.CHECKIN)}
-              size="sm"
-              className="text-xs font-bold gap-1.5"
-            >
-              Scan Desk QR
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card shadow-2xs p-8 text-center space-y-4">
+        <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+          <Monitor className="w-7 h-7" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-foreground">No Active Workstation Session</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+            You do not currently occupy a workstation. Reserve a desk on the floor plan or check in if you already have a reservation.
+          </p>
+        </div>
+        <div className="flex justify-center gap-2.5 pt-2">
+          <Button
+            onClick={() => router.push(ROUTES.HOME)}
+            variant="outline"
+            size="sm"
+            className="text-xs font-semibold"
+          >
+            2D Floor Plan
+          </Button>
+          <Button
+            onClick={() => router.push(ROUTES.CHECKIN)}
+            size="sm"
+            className="text-xs font-bold"
+          >
+            My Reservations &amp; QR
+          </Button>
+        </div>
+      </div>
     );
   }
 
-  const hours = Math.floor(secondsLeft / 3600);
-  const minutes = Math.floor((secondsLeft % 3600) / 60);
-  const seconds = secondsLeft % 60;
-  const isExpiringSoon = secondsLeft <= 10 * 60; // 10 minutes warning
-
-  const totalSeconds = session.durationMinutes ? session.durationMinutes * 60 : 7200;
-  const elapsedSeconds = Math.max(0, totalSeconds - secondsLeft);
-  const percentElapsed = Math.min(100, Math.round((elapsedSeconds / totalSeconds) * 100));
-
   return (
-    <div className="max-w-xl mx-auto space-y-4">
-      {/* 10-Minute Warning Alert */}
-      {isExpiringSoon && secondsLeft > 0 && (
-        <div className="p-4 rounded-xl border border-amber-300 bg-amber-50/90 dark:bg-amber-950/40 text-amber-950 dark:text-amber-200 flex items-start gap-3 shadow-xs animate-in fade-in">
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h4 className="font-bold text-xs">Workstation Session Expiring Soon</h4>
-            <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
-              Your session concludes in under 10 minutes. Please save and push your work, tidy your desk, and check out to release the workstation.
-            </p>
+    <>
+      <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card shadow-2xs overflow-hidden">
+        {/* Card Header */}
+        <div className="p-5 sm:px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base sm:text-lg font-bold text-foreground">
+              Seat {displaySeatCode} · Session active
+            </h2>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Active</span>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsConfirmOpen(true)}
+            className="gap-1.5 text-xs font-semibold rounded-xl hover:text-destructive hover:border-destructive/40 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>End session</span>
+          </Button>
+        </div>
+
+        {/* Card Body */}
+        <div className="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          {/* Left Column: Countdown & Progress */}
+          <div className="space-y-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              Time remaining
+            </div>
+            <div className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground flex items-baseline gap-1.5">
+              <span>{hours}</span>
+              <span className="text-base font-semibold text-muted-foreground">hr</span>
+              <span className="ml-1.5">{minutes}</span>
+              <span className="text-base font-semibold text-muted-foreground">min</span>
+            </div>
+
+            {/* Progress bar matching mockup */}
+            <div className="space-y-1.5 pt-1">
+              <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                  style={{ width: `${percentElapsed}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{minutesElapsed} min elapsed</span>
+                <span>{totalAllocatedText} allocated</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Location & Times */}
+          <div className="space-y-5 md:border-l md:border-slate-100 dark:md:border-slate-800 md:pl-8">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Monitor className="w-4 h-4 text-primary shrink-0" />
+              <span>{podLabel} · SE Lab</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <div className="text-muted-foreground font-medium">Checked in</div>
+                <div className="text-sm font-bold text-foreground mt-0.5">{checkInFormatted.time}</div>
+                <div className="text-[11px] text-muted-foreground">{checkInFormatted.date}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground font-medium">Session expires</div>
+                <div className="text-sm font-bold text-foreground mt-0.5">{expiresFormatted.time}</div>
+                <div className="text-[11px] text-muted-foreground">{expiresFormatted.date}</div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Main Active Card */}
-      <Card className="border-border shadow-xs overflow-hidden">
-        <CardHeader className="p-6 pb-4 border-b border-border/60">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary">
-                {session.podLabel}
-              </Badge>
-              <CardTitle className="text-2xl font-extrabold tracking-tight text-foreground">
-                Workstation {session.seatCode}
-              </CardTitle>
-              <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" />
-                {session.roomName}
-              </div>
-            </div>
+        {/* Card Footer Note */}
+        <div className="px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex items-center gap-2 text-xs text-muted-foreground">
+          <Info className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+          <span>Finished early? End your session to make the desk available for someone else.</span>
+        </div>
+      </div>
 
-            <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 gap-1.5 font-bold text-xs py-1 px-2.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Active Session
-            </Badge>
-          </div>
-        </CardHeader>
-
-        <CardContent className="p-6 space-y-6">
-          {/* Live Countdown Display */}
-          <div className="p-5 rounded-2xl bg-muted/40 border border-border/60 text-center space-y-2">
-            <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-              Time Remaining
-            </div>
-            <div className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-foreground">
-              {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-            </div>
-            <div className="pt-2">
-              <Progress value={percentElapsed} className="h-2" />
-              <div className="flex justify-between text-[10px] text-muted-foreground font-medium pt-1.5">
-                <span>Checked In: {new Date(session.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                <span>Expires: {new Date(session.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-2.5">
-            <Button
-              variant="destructive"
-              onClick={() => setIsConfirmOpen(true)}
-              disabled={isLoading}
-              className="flex-1 h-10 text-xs font-bold gap-2"
-            >
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogOut className="w-4 h-4" />}
-              End Session & Check Out
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Checkout Confirmation Dialog */}
+      {/* Confirmation Dialog */}
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="sm:max-w-md bg-card border-border">
+        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl">
           <DialogHeader>
+            <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center mb-2">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
             <DialogTitle className="text-base font-bold text-foreground">
-              Check out of Workstation {session.seatCode}?
+              End Workstation Session?
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground pt-1">
-              Checking out will conclude your session and make this workstation immediately available for other students.
+            <DialogDescription className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              Are you sure you want to end your session at Seat {displaySeatCode}? Your workstation will be immediately released and marked available on the floor plan for other students.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setIsConfirmOpen(false)} className="text-xs">
+          <DialogFooter className="mt-4 flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsConfirmOpen(false)}
+              className="text-xs font-semibold"
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
               size="sm"
+              disabled={isLoading}
               onClick={() => {
                 setIsConfirmOpen(false);
-                onCheckOut(session.id);
+                if (session) {
+                  onCheckOut(session.id);
+                }
               }}
-              className="text-xs font-bold"
+              className="text-xs font-semibold gap-1.5"
             >
-              Yes, Check Out
+              {isLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+              <span>End session</span>
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }
-
