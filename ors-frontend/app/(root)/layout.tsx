@@ -1,15 +1,35 @@
 'use client';
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { AuthModal } from '@/components/auth/auth-modal';
+import { useApp } from '@/hooks/use-app-store';
+import { ROUTES } from '@/config/routes';
 
 export default function RootGroupLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { currentUser, isHydrated } = useApp();
   const isAdminRoute = pathname?.startsWith('/admin');
+
+  // Client-side auth guard: redirect to login if not authenticated after hydration
+  useEffect(() => {
+    if (isHydrated && !currentUser) {
+      router.replace(`${ROUTES.LOGIN}?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [isHydrated, currentUser, pathname, router]);
+
+  // Show nothing while hydrating or redirecting
+  if (!isHydrated || !currentUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (isAdminRoute) {
     return (

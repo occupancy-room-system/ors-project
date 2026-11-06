@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { ROUTES } from '@/config/routes';
 import { useApp } from '@/hooks/use-app-store';
@@ -87,22 +88,20 @@ export function Header() {
               <>
                 <Link
                   href={ROUTES.HOME}
-                  className={`h-full flex items-center text-xs sm:text-sm font-semibold transition-colors border-b-2 px-1 ${
-                    isOverview
+                  className={`h-full flex items-center text-xs sm:text-sm font-semibold transition-colors border-b-2 px-1 ${isOverview
                       ? 'border-primary text-primary font-bold'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                    }`}
                 >
                   Lab overview
                 </Link>
 
                 <Link
                   href={ROUTES.CHECKIN}
-                  className={`h-full flex items-center text-xs sm:text-sm font-semibold transition-colors border-b-2 px-1 relative ${
-                    isReservations
+                  className={`h-full flex items-center text-xs sm:text-sm font-semibold transition-colors border-b-2 px-1 relative ${isReservations
                       ? 'border-primary text-primary font-bold'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                    }`}
                 >
                   My reservations
                   {mounted && pendingReservationCount > 0 && (
@@ -114,11 +113,10 @@ export function Header() {
 
                 <Link
                   href={ROUTES.SESSION}
-                  className={`h-full flex items-center text-xs sm:text-sm font-semibold transition-colors border-b-2 px-1 relative ${
-                    isSession
+                  className={`h-full flex items-center text-xs sm:text-sm font-semibold transition-colors border-b-2 px-1 relative ${isSession
                       ? 'border-primary text-primary font-bold'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                    }`}
                 >
                   My session
                   {mounted && activeSession && (
@@ -167,11 +165,10 @@ export function Header() {
                     <div className="pt-1">
                       <Badge
                         variant="secondary"
-                        className={`text-[9px] font-bold ${
-                          currentUser.role === 'ADMINISTRATOR'
+                        className={`text-[9px] font-bold ${currentUser.role === 'ADMINISTRATOR'
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                             : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                        }`}
+                          }`}
                       >
                         {currentUser.role}
                       </Badge>

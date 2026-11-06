@@ -4,7 +4,7 @@ export const ROUTES = {
   SESSION: '/session',
   ADMIN: '/admin',
   LOGIN: '/auth/login',
-  REGISTER: '/auth/login?mode=register',
+  REGISTER: '/auth/login?tab=signup',
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];

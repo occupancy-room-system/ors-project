@@ -72,7 +72,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const stored = localStorage.getItem('ors_user');
       if (stored) {
-        setCurrentUserState(JSON.parse(stored) as User);
+        const parsedUser = JSON.parse(stored) as User;
+        setCurrentUserState(parsedUser);
+        // Restore cookie if missing (e.g. after browser restart)
+        const tokenValue = parsedUser.token || localStorage.getItem('ors_token') || 'authenticated';
+        if (!document.cookie.includes('ors_token=')) {
+          document.cookie = `ors_token=${tokenValue}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+        }
       }
     } catch (e) {
       console.error('Failed to parse stored user from localStorage', e);
@@ -81,18 +87,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Synchronize localStorage with currentUser
+  // Synchronize localStorage + cookie with currentUser
   const setCurrentUser = useCallback((user: User | null) => {
     setCurrentUserState(user);
     if (typeof window !== 'undefined') {
       if (user) {
         localStorage.setItem('ors_user', JSON.stringify(user));
-        if (user.token) {
-          localStorage.setItem('ors_token', user.token);
-        }
+        // Use token if available, otherwise use a simple presence marker
+        const tokenValue = user.token || 'authenticated';
+        localStorage.setItem('ors_token', tokenValue);
+        // Set cookie so middleware can protect routes server-side
+        document.cookie = `ors_token=${tokenValue}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
       } else {
         localStorage.removeItem('ors_user');
         localStorage.removeItem('ors_token');
+        // Clear the auth cookie
+        document.cookie = 'ors_token=; path=/; max-age=0; SameSite=Lax';
       }
     }
   }, []);
