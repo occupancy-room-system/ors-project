@@ -114,6 +114,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: userReservationsData = [], refetch: refetchReservations } = useUserReservationsQuery(currentUser?.id);
   const { data: sessionHistoryData = [], refetch: refetchHistory } = useSessionHistoryQuery(currentUser?.id);
 
+  useEffect(() => {
+    if (currentUser) {
+      void refetchRoom();
+    }
+  }, [currentUser, refetchRoom]);
+
   const [activeSessionOverride, setActiveSessionOverride] = useState<OccupancySession | null | undefined>(undefined);
 
   // Sync activeSessionOverride when fresh activeSessionData arrives from query
@@ -186,4 +192,3 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
-
