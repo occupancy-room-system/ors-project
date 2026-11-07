@@ -17,6 +17,7 @@ import th.mfu.repository.ReservationRepository;
 import th.mfu.repository.RoomRepository;
 import th.mfu.repository.SeatRepository;
 import th.mfu.service.SessionService;
+import th.mfu.util.LabOperatingHours;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -105,9 +106,14 @@ public class SessionServiceImpl implements SessionService {
         }
 
         // 4. Activate the user's matched reservation
-        int durationMinutes = userPendingReservation.getDurationHours() * 60;
-        LocalDateTime checkInTime = LocalDateTime.now();
-        LocalDateTime expiryTime = checkInTime.plusMinutes(durationMinutes);
+        LocalDateTime checkInTime = LabOperatingHours.now();
+        if (!LabOperatingHours.isOpenAt(checkInTime)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "SE Lab sessions can only be started between 9:00 AM and 5:00 PM.");
+        }
+        LocalDateTime expiryTime = LabOperatingHours.sessionExpiry(
+                checkInTime, userPendingReservation.getDurationHours());
+        int durationMinutes = (int) Duration.between(checkInTime, expiryTime).toMinutes();
 
         OccupancySession primarySession = null;
 
@@ -212,7 +218,7 @@ public class SessionServiceImpl implements SessionService {
                 Seat st = seatRepository.findById(s.getSeatId()).orElse(null);
                 if (st != null && curSeat.getGroupTableId().equals(st.getGroupTableId())) {
                     s.setStatus("CHECKED_OUT");
-                    s.setCheckedOutAt(LocalDateTime.now());
+                    s.setCheckedOutAt(LabOperatingHours.now());
                     sessionRepository.save(s);
 
                     if ("OCCUPIED".equals(st.getStatus()) || "EXPIRING_SOON".equals(st.getStatus())) {
@@ -223,7 +229,7 @@ public class SessionServiceImpl implements SessionService {
             }
         } else {
             session.setStatus("CHECKED_OUT");
-            session.setCheckedOutAt(LocalDateTime.now());
+            session.setCheckedOutAt(LabOperatingHours.now());
             sessionRepository.save(session);
 
             if (curSeat != null && !"MAINTENANCE".equals(curSeat.getStatus())) {
@@ -309,4 +315,3 @@ public class SessionServiceImpl implements SessionService {
         return responses;
     }
 }
-

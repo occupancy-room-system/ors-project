@@ -11,6 +11,7 @@ import th.mfu.repository.AuditLogRepository;
 import th.mfu.repository.OccupancySessionRepository;
 import th.mfu.repository.ReservationRepository;
 import th.mfu.repository.SeatRepository;
+import th.mfu.util.LabOperatingHours;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -34,10 +35,10 @@ public class SessionExpiryScheduler {
         this.auditLogRepository = auditLogRepository;
     }
 
-    @Scheduled(fixedRate = 5000)
+    @Scheduled(cron = "*/5 * * * * *", zone = "Asia/Bangkok")
     @Transactional
     public void processExpirations() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LabOperatingHours.now();
 
         // 1. Process active sessions
         List<OccupancySession> activeSessions = sessionRepository.findByStatus("ACTIVE");
@@ -45,7 +46,7 @@ public class SessionExpiryScheduler {
             long remainingMs = Duration.between(now, session.getExpiresAt()).toMillis();
             if (remainingMs <= 0) {
                 session.setStatus("EXPIRED");
-                session.setCheckedOutAt(now);
+                session.setCheckedOutAt(session.getExpiresAt());
                 sessionRepository.save(session);
 
                 seatRepository.findById(session.getSeatId()).ifPresent(seat -> {
@@ -75,7 +76,7 @@ public class SessionExpiryScheduler {
         // 2. Process pending reservations past arrival deadline
         List<Reservation> pendingReservations = reservationRepository.findByStatus("PENDING_ACTIVATION");
         for (Reservation resv : pendingReservations) {
-            if (now.isAfter(resv.getExpiresAt())) {
+            if (!now.isBefore(resv.getExpiresAt())) {
                 resv.setStatus("EXPIRED");
                 reservationRepository.save(resv);
 
@@ -97,4 +98,3 @@ public class SessionExpiryScheduler {
         }
     }
 }
-

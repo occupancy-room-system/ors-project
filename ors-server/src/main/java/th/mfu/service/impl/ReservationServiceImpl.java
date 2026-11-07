@@ -16,10 +16,10 @@ import th.mfu.repository.ReservationRepository;
 import th.mfu.repository.SeatRepository;
 import th.mfu.repository.UserRepository;
 import th.mfu.service.ReservationService;
+import th.mfu.util.LabOperatingHours;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -63,10 +63,10 @@ public class ReservationServiceImpl implements ReservationService {
 
         // 3. Validate Start Time
         LocalDateTime startTime;
-        ZoneId zone = ZoneId.systemDefault();
+        var zone = LabOperatingHours.ZONE_ID;
         try {
             if (req.getStartTime() == null || req.getStartTime().isBlank()) {
-                startTime = LocalDateTime.now();
+                startTime = LabOperatingHours.now();
             } else if (req.getStartTime().endsWith("Z")) {
                 startTime = LocalDateTime.ofInstant(Instant.parse(req.getStartTime()), zone);
             } else {
@@ -77,12 +77,21 @@ public class ReservationServiceImpl implements ReservationService {
                 }
             }
         } catch (Exception e) {
-            startTime = LocalDateTime.now();
+            startTime = LabOperatingHours.now();
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LabOperatingHours.now();
+        if (!LabOperatingHours.isOpenAt(now)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "SE Lab is open from 9:00 AM to 5:00 PM. Reservations cannot be made while the lab is closed.");
+        }
         if (startTime.isBefore(now.minusMinutes(10))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Reservation start time cannot be in the past.");
+        }
+        if (startTime.toLocalTime().isBefore(LabOperatingHours.OPENS_AT)
+                || !startTime.isBefore(LabOperatingHours.closingTime(startTime.toLocalDate()))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Reservation start time must be between 9:00 AM and 5:00 PM.");
         }
         if (startTime.isAfter(now.plusMinutes(75))) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
@@ -127,7 +136,7 @@ public class ReservationServiceImpl implements ReservationService {
         }
 
         // 6. Create Reservations (20 minute activation window from start time)
-        LocalDateTime activationDeadline = startTime.plusMinutes(20);
+        LocalDateTime activationDeadline = LabOperatingHours.reservationActivationDeadline(startTime);
         Reservation primaryReservation = null;
 
         for (int i = 0; i < targetSeats.size(); i++) {
@@ -221,4 +230,3 @@ public class ReservationServiceImpl implements ReservationService {
         ));
     }
 }
-

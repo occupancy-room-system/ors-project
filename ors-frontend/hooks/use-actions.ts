@@ -37,7 +37,7 @@ export function useActions() {
           durationHours: params.durationHours,
         });
         showToast(
-          `Workstation ${res.seatCode} reserved for ${res.durationHours}h! Go to QR Check-In to activate.`,
+          `Workstation ${res.seatCode} reserved for up to ${res.durationHours}h, ending by 5:00 PM. Go to QR Check-In to activate.`,
           'success',
         );
         await loadData();
@@ -108,4 +108,3 @@ export function useActions() {
     handleTerminateSession,
   };
 }
-

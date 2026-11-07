@@ -34,6 +34,10 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
+import {
+  getLabReservationActivationDeadline,
+  parseLabDateTime,
+} from '@/utils/lab-hours';
 
 interface QrCheckInProps {
   seats: Seat[];
@@ -106,17 +110,30 @@ export function QrCheckIn({
 
   const plannedTime = useMemo(() => {
     if (!activeReservation?.startTime) return null;
-    const date = new Date(activeReservation.startTime);
+    const date = parseLabDateTime(activeReservation.startTime);
     return {
-      time: `Today, ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
-      date: date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }),
+      time: `Today, ${date.toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'Asia/Bangkok',
+      })}`,
+      date: date.toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'Asia/Bangkok',
+      }),
     };
   }, [activeReservation]);
 
   const graceTime = useMemo(() => {
     if (!activeReservation?.startTime) return null;
-    const date = new Date(new Date(activeReservation.startTime).getTime() + 20 * 60000);
-    return `Today, ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    const date = getLabReservationActivationDeadline(parseLabDateTime(activeReservation.startTime));
+    return `Today, ${date.toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: 'Asia/Bangkok',
+    })}`;
   }, [activeReservation]);
 
   const playSuccessChime = () => {
@@ -576,8 +593,8 @@ export function QrCheckIn({
                 </div>
                 <div>
                   <div className="text-muted-foreground font-medium">Session duration</div>
-                  <div className="font-bold text-foreground text-sm mt-0.5">{durationHours} hours</div>
-                  <div className="text-muted-foreground text-[11px]">Starts after QR check-in</div>
+                  <div className="font-bold text-foreground text-sm mt-0.5">{durationHours} hours requested</div>
+                  <div className="text-muted-foreground text-[11px]">Session ends by 5:00 PM</div>
                 </div>
               </div>
 
@@ -591,7 +608,7 @@ export function QrCheckIn({
                   {graceTime}
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  You have a 20-minute arrival grace period from your planned arrival time.
+                  You have up to 20 minutes to check in, but no later than 5:00 PM.
                 </p>
               </div>
 
@@ -601,7 +618,7 @@ export function QrCheckIn({
                   When you arrive
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Find Seat {displaySeatCode} at {podLabel}. The QR label on your desk will start your {durationHours}-hour session.
+                  Find Seat {displaySeatCode} at {podLabel}. The QR label on your desk will start your session for up to {durationHours} hours, ending by 5:00 PM.
                 </p>
               </div>
 

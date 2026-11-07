@@ -27,6 +27,7 @@ import {
   QrCode,
   Wrench,
 } from 'lucide-react';
+import { getLabSessionEndTime, isLabOpenAt } from '@/utils/lab-hours';
 
 interface SeatDetailDialogProps {
   seat: Seat | null;
@@ -93,13 +94,14 @@ export function SeatDetailDialog({
   }, [currentTime, arrivalOffsetMinutes]);
 
   const endTime = useMemo(() => {
-    return new Date(arrivalTime.getTime() + durationHours * 3600000);
+    return getLabSessionEndTime(arrivalTime, durationHours);
   }, [arrivalTime, durationHours]);
 
   const formatClock = (d: Date) =>
-    d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok' });
 
   const arrivalOption = arrivalOptions.find((o) => o.offset === arrivalOffsetMinutes) || arrivalOptions[0];
+  const labIsOpen = isLabOpenAt(currentTime);
 
   const handleReservationSubmit = async () => {
     setErrorMsg(null);
@@ -111,7 +113,14 @@ export function SeatDetailDialog({
     setSubmitting(true);
     try {
       // Always evaluate fresh arrival time at the exact moment of reservation
-      const freshArrivalTime = new Date(Date.now() + arrivalOffsetMinutes * 60000);
+      const now = new Date();
+      if (!isLabOpenAt(now)) {
+        throw new Error('SE Lab reservations are available from 9:00 AM to 5:00 PM.');
+      }
+      const freshArrivalTime = new Date(now.getTime() + arrivalOffsetMinutes * 60000);
+      if (!isLabOpenAt(freshArrivalTime)) {
+        throw new Error('Reservation arrival must be before the 5:00 PM closing time.');
+      }
       await onConfirmReservation({
         seatId: seat.id,
         startTime: freshArrivalTime.toISOString(),
@@ -256,11 +265,13 @@ export function SeatDetailDialog({
                 <DropdownMenuContent align="center" className="w-[390px] sm:w-[412px] p-1.5 z-50">
                   {arrivalOptions.map((opt) => {
                     const optTime = new Date(currentTime.getTime() + opt.offset * 60000);
+                    const isOutsideHours = !isLabOpenAt(optTime);
                     const isSelected = arrivalOffsetMinutes === opt.offset;
                     return (
                       <DropdownMenuItem
                         key={opt.offset}
                         onClick={() => setArrivalOffsetMinutes(opt.offset)}
+                        disabled={!labIsOpen || isOutsideHours}
                         className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs sm:text-sm cursor-pointer ${
                           isSelected ? 'bg-primary/10 text-primary font-bold' : ''
                         }`}
@@ -318,8 +329,16 @@ export function SeatDetailDialog({
             {/* 6. Information Notice */}
             <div className="flex items-center gap-2 text-xs text-muted-foreground pt-0.5">
               <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span>You can reserve up to 1 hour before arrival.</span>
+              <span>
+                You can reserve up to 1 hour before arrival. SE Lab hours are 9:00 AM–5:00 PM;
+                sessions end at closing time even if the selected duration is longer.
+              </span>
             </div>
+            {!labIsOpen && (
+              <div className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                Reservations are unavailable while the lab is closed.
+              </div>
+            )}
           </div>
         )}
 
@@ -350,7 +369,7 @@ export function SeatDetailDialog({
           {isAvailable && (
             <button
               type="button"
-              disabled={submitting}
+              disabled={submitting || !labIsOpen}
               onClick={handleReservationSubmit}
               className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 disabled:opacity-50"
             >
