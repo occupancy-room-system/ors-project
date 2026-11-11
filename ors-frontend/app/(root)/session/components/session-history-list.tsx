@@ -40,7 +40,7 @@ export function SessionHistoryList({ history }: SessionHistoryListProps) {
   return (
     <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card shadow-2xs overflow-hidden">
       {/* Card Header */}
-      <div className="p-5 sm:px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
+      <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-bold text-foreground">
             Previous lab sessions
@@ -58,7 +58,24 @@ export function SessionHistoryList({ history }: SessionHistoryListProps) {
       {/* Sessions Table or Empty State */}
       {displaySessions.length > 0 ? (
         <>
-          <div className="overflow-x-auto">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 sm:hidden">
+            {paginatedSessions.map((item) => (
+              <div key={item.id} className="p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-medium text-muted-foreground">{item.dateFormatted}</div>
+                    <div className="mt-0.5 text-sm font-bold text-foreground">Desk {item.deskCode}</div>
+                  </div>
+                  <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold">
+                    <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Completed</span>
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">{item.durationText}</div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full text-left text-xs">
               <thead className="border-b border-slate-100 dark:border-slate-800 text-[11px] text-muted-foreground font-semibold uppercase tracking-wider bg-slate-50/50 dark:bg-slate-900/40">
                 <tr>

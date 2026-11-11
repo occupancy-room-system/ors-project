@@ -115,19 +115,19 @@ export function ActiveSessionCard({
             You do not currently occupy a workstation. Reserve a desk on the floor plan or check in if you already have a reservation.
           </p>
         </div>
-        <div className="flex justify-center gap-2.5 pt-2">
+        <div className="flex flex-col sm:flex-row justify-center gap-2.5 pt-2">
           <Button
             onClick={() => router.push(ROUTES.HOME)}
             variant="outline"
             size="sm"
-            className="text-xs font-semibold"
+            className="w-full sm:w-auto text-xs font-semibold"
           >
             2D Floor Plan
           </Button>
           <Button
             onClick={() => router.push(ROUTES.CHECKIN)}
             size="sm"
-            className="text-xs font-bold"
+            className="w-full sm:w-auto text-xs font-bold"
           >
             My Reservations &amp; QR
           </Button>
@@ -140,7 +140,7 @@ export function ActiveSessionCard({
     <>
       <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card shadow-2xs overflow-hidden">
         {/* Card Header */}
-        <div className="p-5 sm:px-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
+        <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-slate-800 flex flex-col items-start sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <h2 className="text-base sm:text-lg font-bold text-foreground">
               Seat {displaySeatCode} · Session active
@@ -155,7 +155,7 @@ export function ActiveSessionCard({
             variant="outline"
             size="sm"
             onClick={() => setIsConfirmOpen(true)}
-            className="gap-1.5 text-xs font-semibold rounded-xl hover:text-destructive hover:border-destructive/40 cursor-pointer"
+            className="w-full sm:w-auto gap-1.5 text-xs font-semibold rounded-xl hover:text-destructive hover:border-destructive/40 cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>End session</span>
@@ -163,7 +163,7 @@ export function ActiveSessionCard({
         </div>
 
         {/* Card Body */}
-        <div className="p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        <div className="p-5 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
           {/* Left Column: Countdown & Progress */}
           <div className="space-y-3">
             <div className="text-xs font-medium text-muted-foreground">

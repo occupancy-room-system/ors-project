@@ -12,7 +12,7 @@ interface OfflineBannerProps {
 export function OfflineBanner({ onRetry }: OfflineBannerProps) {
   return (
     <Alert className="border-amber-300/80 bg-amber-50/70 dark:bg-amber-950/30 text-amber-950 dark:text-amber-200 shadow-xs">
-      <div className="flex items-start justify-between gap-4 w-full">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-4 w-full">
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
@@ -29,7 +29,7 @@ export function OfflineBanner({ onRetry }: OfflineBannerProps) {
             size="sm"
             variant="outline"
             onClick={onRetry}
-            className="h-8 text-xs font-semibold gap-1.5 shrink-0 bg-background/80 border-amber-300 text-amber-900 hover:bg-amber-100"
+            className="h-11 w-full sm:h-8 sm:w-auto text-xs font-semibold gap-1.5 shrink-0 bg-background/80 border-amber-300 text-amber-900 hover:bg-amber-100"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Reconnect

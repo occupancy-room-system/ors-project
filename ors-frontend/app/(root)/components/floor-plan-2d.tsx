@@ -266,7 +266,7 @@ export function FloorPlan2D({
   };
 
   return (
-    <div className="bg-card rounded-2xl border border-border/80 shadow-xs p-5 sm:p-6 space-y-4">
+    <div className="bg-card rounded-2xl border border-border/80 shadow-xs p-4 sm:p-6 space-y-4">
       {/* 1. Header Row: Title & View Segmented Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
@@ -280,39 +280,39 @@ export function FloorPlan2D({
         </div>
 
         {/* View Switcher: All workspaces | Individual desks | Group tables */}
-        <div className="flex items-center p-1 bg-muted/60 rounded-xl border border-border/60 self-start sm:self-auto">
+        <div className="grid w-full grid-cols-3 items-center p-1 bg-muted/60 rounded-xl border border-border/60 sm:flex sm:w-auto self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setFilterMode("ALL")}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`min-h-11 sm:min-h-9 px-2 sm:px-3 py-1 text-center rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
               filterMode === "ALL"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            All workspaces
+            <span className="sm:hidden">All</span><span className="hidden sm:inline">All workspaces</span>
           </button>
           <button
             type="button"
             onClick={() => setFilterMode("INDIVIDUAL")}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`min-h-11 sm:min-h-9 px-2 sm:px-3 py-1 text-center rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
               filterMode === "INDIVIDUAL"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Individual desks
+            <span className="sm:hidden">Desks</span><span className="hidden sm:inline">Individual desks</span>
           </button>
           <button
             type="button"
             onClick={() => setFilterMode("GROUP")}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`min-h-11 sm:min-h-9 px-2 sm:px-3 py-1 text-center rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
               filterMode === "GROUP"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Group tables
+            <span className="sm:hidden">Tables</span><span className="hidden sm:inline">Group tables</span>
           </button>
         </div>
       </div>
@@ -320,10 +320,10 @@ export function FloorPlan2D({
       {/* 2. Controls & Legend Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-1">
         {/* Left: Filter dropdown + Search input */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex w-full items-center gap-2.5 flex-wrap lg:w-auto">
           {/* Status filter dropdown using Shadcn DropdownMenu */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="h-8 px-2.5 text-xs font-semibold rounded-lg border border-border bg-background hover:bg-muted/50 text-foreground flex items-center gap-2 transition-colors cursor-pointer shadow-2xs outline-none">
+            <DropdownMenuTrigger className="h-11 sm:h-8 px-2.5 text-xs font-semibold rounded-lg border border-border bg-background hover:bg-muted/50 text-foreground flex items-center gap-2 transition-colors cursor-pointer shadow-2xs outline-none">
               <SlidersHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
               <span>
                 {statusFilter === "ALL"
@@ -436,14 +436,14 @@ export function FloorPlan2D({
           </DropdownMenu>
 
           {/* Search desk ID */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Find a desk ID"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 pl-8 pr-3 text-xs rounded-lg border border-border bg-background placeholder:text-muted-foreground text-foreground w-44 focus:outline-none focus:ring-1 focus:ring-primary transition-colors shadow-2xs"
+              className="h-11 sm:h-8 w-full sm:w-44 pl-8 pr-3 text-xs rounded-lg border border-border bg-background placeholder:text-muted-foreground text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors shadow-2xs"
             />
           </div>
         </div>
@@ -474,7 +474,7 @@ export function FloorPlan2D({
       </div>
 
       {/* 3. The 2D Floor Plan Canvas */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-[#F8FAFC] dark:bg-slate-950/40 p-6 sm:p-8 relative">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-[#F8FAFC] dark:bg-slate-950/40 p-3 pt-10 sm:p-8 relative">
         {/* Top Center: WINDOWS label */}
         <div className="text-center font-mono text-[10px] tracking-widest text-slate-400 font-bold uppercase select-none mb-3">
           WINDOWS
@@ -485,7 +485,7 @@ export function FloorPlan2D({
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.max(z - 10, 80))}
-            className="w-6 h-6 flex items-center justify-center text-xs text-muted-foreground hover:text-foreground font-bold cursor-pointer"
+            className="w-10 h-10 sm:w-6 sm:h-6 flex items-center justify-center text-xs text-muted-foreground hover:text-foreground font-bold cursor-pointer"
             title="Zoom out"
           >
             —
@@ -496,7 +496,7 @@ export function FloorPlan2D({
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.min(z + 10, 130))}
-            className="w-6 h-6 flex items-center justify-center text-xs text-muted-foreground hover:text-foreground font-bold cursor-pointer"
+            className="w-10 h-10 sm:w-6 sm:h-6 flex items-center justify-center text-xs text-muted-foreground hover:text-foreground font-bold cursor-pointer"
             title="Zoom in"
           >
             +
@@ -504,7 +504,7 @@ export function FloorPlan2D({
           <button
             type="button"
             onClick={() => setZoomLevel(100)}
-            className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground border-l border-slate-200 dark:border-slate-700 cursor-pointer pl-1 ml-0.5"
+            className="w-10 h-10 sm:w-6 sm:h-6 flex items-center justify-center text-muted-foreground hover:text-foreground border-l border-slate-200 dark:border-slate-700 cursor-pointer pl-1 ml-0.5"
             title="Reset zoom"
           >
             <Maximize2 className="w-3 h-3" />
@@ -513,7 +513,7 @@ export function FloorPlan2D({
 
         {/* Scalable Layout Board */}
         <div
-          className="min-w-[1080px] w-full mx-auto transition-transform origin-top flex flex-row gap-6 lg:gap-8 items-start justify-between"
+          className="min-w-[1080px] w-full mx-auto pb-3 transition-transform origin-top flex flex-row gap-6 lg:gap-8 items-start justify-between"
           style={{ transform: `scale(${zoomLevel / 100})` }}
         >
           {/* Main Area: Stations A-E, Group Tables 1, 3, 5 */}

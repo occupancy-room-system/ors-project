@@ -71,7 +71,7 @@ export default function AdminPage() {
               <Button
                 onClick={() => openAuthModal('admin')}
                 size="sm"
-                className="text-xs font-bold gap-2 bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20 cursor-pointer"
+                className="h-11 w-full sm:h-7 sm:w-auto text-xs font-bold gap-2 bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20 cursor-pointer"
               >
                 <KeyRound className="w-3.5 h-3.5" />
                 Sign In as Admin
@@ -80,7 +80,7 @@ export default function AdminPage() {
                 onClick={() => router.push(ROUTES.HOME)}
                 variant="outline"
                 size="sm"
-                className="text-xs font-semibold gap-2 rounded-xl border-[#edf1f7] hover:bg-slate-50"
+                className="h-11 w-full sm:h-7 sm:w-auto text-xs font-semibold gap-2 rounded-xl border-[#edf1f7] hover:bg-slate-50"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Return to Floor Plan

@@ -69,7 +69,7 @@ export function TablePagination({
 
   return (
     <div
-      className={`px-4 sm:px-6 py-3 border-t border-[#edf1f7] dark:border-[#1f293d] bg-white dark:bg-[#111827] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs select-none ${className}`}
+      className={`px-4 sm:px-6 py-4 sm:py-3 border-t border-[#edf1f7] dark:border-[#1f293d] bg-white dark:bg-[#111827] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs select-none ${className}`}
     >
       {/* Left: Item range and Page size selector */}
       <div className="flex flex-wrap items-center gap-3 text-slate-500 dark:text-slate-400">
@@ -81,7 +81,7 @@ export function TablePagination({
         <div className="flex items-center gap-1.5 ml-2">
           <span className="text-[11px]">Rows:</span>
           <DropdownMenu>
-            <DropdownMenuTrigger className="h-7 px-2.5 text-xs font-semibold rounded-lg border border-[#edf1f7] dark:border-slate-700 bg-[#f8fafc] dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-3xs cursor-pointer outline-none">
+            <DropdownMenuTrigger className="h-10 sm:h-7 px-2.5 text-xs font-semibold rounded-lg border border-[#edf1f7] dark:border-slate-700 bg-[#f8fafc] dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex items-center gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-3xs cursor-pointer outline-none">
               <span>{pageSize}</span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
             </DropdownMenuTrigger>
@@ -123,7 +123,7 @@ export function TablePagination({
           size="sm"
           onClick={() => onPageChange(1)}
           disabled={safeCurrentPage <= 1}
-          className="h-7 w-7 p-0 rounded-lg border-[#edf1f7] dark:border-slate-700 disabled:opacity-30 cursor-pointer"
+          className="hidden sm:inline-flex h-7 w-7 p-0 rounded-lg border-[#edf1f7] dark:border-slate-700 disabled:opacity-30 cursor-pointer"
           title="First page"
         >
           <ChevronsLeft className="w-3.5 h-3.5" />
@@ -135,7 +135,7 @@ export function TablePagination({
           size="sm"
           onClick={() => onPageChange(safeCurrentPage - 1)}
           disabled={safeCurrentPage <= 1}
-          className="h-7 w-7 p-0 rounded-lg border-[#edf1f7] dark:border-slate-700 disabled:opacity-30 cursor-pointer"
+          className="h-10 w-10 sm:h-7 sm:w-7 p-0 rounded-lg border-[#edf1f7] dark:border-slate-700 disabled:opacity-30 cursor-pointer"
           title="Previous page"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
@@ -172,7 +172,7 @@ export function TablePagination({
           size="sm"
           onClick={() => onPageChange(safeCurrentPage + 1)}
           disabled={safeCurrentPage >= totalPages}
-          className="h-7 w-7 p-0 rounded-lg border-[#edf1f7] dark:border-slate-700 disabled:opacity-30 cursor-pointer"
+          className="h-10 w-10 sm:h-7 sm:w-7 p-0 rounded-lg border-[#edf1f7] dark:border-slate-700 disabled:opacity-30 cursor-pointer"
           title="Next page"
         >
           <ChevronRight className="w-3.5 h-3.5" />
@@ -184,7 +184,7 @@ export function TablePagination({
           size="sm"
           onClick={() => onPageChange(totalPages)}
           disabled={safeCurrentPage >= totalPages}
-          className="h-7 w-7 p-0 rounded-lg border-[#edf1f7] dark:border-slate-700 disabled:opacity-30 cursor-pointer"
+          className="hidden sm:inline-flex h-7 w-7 p-0 rounded-lg border-[#edf1f7] dark:border-slate-700 disabled:opacity-30 cursor-pointer"
           title="Last page"
         >
           <ChevronsRight className="w-3.5 h-3.5" />

@@ -77,7 +77,7 @@ export default function SessionPage() {
 
       {/* 3. Stepper Bar */}
       <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card p-4 sm:px-6 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5 sm:gap-4 text-xs font-medium">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 text-xs font-medium">
           {/* Step 1: Reservation */}
           <div className="flex items-center gap-2">
             {currentSession ? (
@@ -94,7 +94,7 @@ export default function SessionPage() {
             </span>
           </div>
 
-          <div className="w-8 sm:w-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
+          <div className="w-5 sm:w-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
 
           {/* Step 2: Check in */}
           <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export default function SessionPage() {
             </span>
           </div>
 
-          <div className="w-8 sm:w-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
+          <div className="w-5 sm:w-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
 
           {/* Step 3: Active session */}
           <div className="flex items-center gap-2">

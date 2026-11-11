@@ -785,11 +785,11 @@ export function AdminDashboard({
   };
 
   return (
-    <div className="w-full min-h-screen flex bg-white dark:bg-[#0f141c] font-sans antialiased text-slate-800 dark:text-slate-100">
+    <div className="w-full min-h-screen flex flex-col md:flex-row bg-white dark:bg-[#0f141c] font-sans antialiased text-slate-800 dark:text-slate-100">
       {/* -------------------------------------------------------------------- */}
       {/* 1. LEFT SIDEBAR (Matching media_1793676626285_d7600dd0.jpg)         */}
       {/* -------------------------------------------------------------------- */}
-      <aside className="w-64 shrink-0 bg-white dark:bg-[#161c26] border-r border-[#edf1f7] dark:border-[#232c3d] flex flex-col justify-between select-none shadow-[1px_0_4px_rgba(0,0,0,0.01)]">
+      <aside className="hidden w-64 shrink-0 bg-white dark:bg-[#161c26] border-r border-[#edf1f7] dark:border-[#232c3d] md:flex md:flex-col justify-between select-none shadow-[1px_0_4px_rgba(0,0,0,0.01)]">
         <div>
           {/* Logo Brand Header */}
           <div className="h-16 px-5 border-b border-[#edf1f7] dark:border-[#232c3d] flex items-center gap-2.5">
@@ -968,11 +968,11 @@ export function AdminDashboard({
       {/* -------------------------------------------------------------------- */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#fafbfc] dark:bg-[#0f141c]">
         {/* Top Navbar */}
-        <header className="h-16 px-6 sm:px-8 border-b border-[#edf1f7] dark:border-[#232c3d] bg-white/95 dark:bg-[#161c26]/95 backdrop-blur-sm flex items-center justify-between shrink-0">
+        <header className="h-16 px-4 sm:px-8 border-b border-[#edf1f7] dark:border-[#232c3d] bg-white/95 dark:bg-[#161c26]/95 backdrop-blur-sm flex items-center justify-between shrink-0">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <Shield className="w-3.5 h-3.5 text-[#4a7cf6]" />
-            <span>Admin console</span>
+            <span className="hidden sm:inline">Admin console</span>
             <ChevronRight className="w-3 h-3 text-slate-300 dark:text-slate-600" />
             <span className="font-semibold text-slate-700 dark:text-white capitalize">
               {activeSection === 'usage'
@@ -996,7 +996,7 @@ export function AdminDashboard({
                 <div className="w-6 h-6 rounded-full bg-[#f0f5ff] text-[#4a7cf6] text-[10px] font-bold flex items-center justify-center">
                   {getInitials(currentUser?.fullName || 'ORS Administrator')}
                 </div>
-                <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                <span className="hidden sm:inline text-xs font-semibold text-slate-700 dark:text-slate-200">
                   {currentUser?.fullName || 'ORS Administrator'}
                 </span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
@@ -1035,8 +1035,32 @@ export function AdminDashboard({
           </div>
         </header>
 
+        <nav aria-label="Admin sections" className="md:hidden flex gap-1 overflow-x-auto border-b border-[#edf1f7] dark:border-[#232c3d] bg-white dark:bg-[#161c26] px-3 py-2">
+          {[
+            { id: 'usage' as const, label: 'Reports', icon: BarChart3 },
+            { id: 'kpis' as const, label: 'KPIs', icon: Activity },
+            { id: 'workstations' as const, label: 'Desks', icon: Monitor },
+            { id: 'users' as const, label: 'Users', icon: UserCog },
+            { id: 'sessions' as const, label: 'Sessions', icon: History },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActiveSection(id)}
+              className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition-colors ${
+                activeSection === id
+                  ? 'bg-[#f0f5ff] text-[#4070d8] dark:bg-blue-950/40 dark:text-blue-300'
+                  : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </nav>
+
         {/* Dynamic Section Content */}
-        <main className="p-6 sm:p-8 space-y-6">
+        <main className="p-4 sm:p-8 space-y-6">
           {/* ================================================================ */}
           {/* SECTION 1: USAGE REPORTS (Matching Mockup)                        */}
           {/* ================================================================ */}
@@ -1056,13 +1080,13 @@ export function AdminDashboard({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0">
+                <div className="grid w-full grid-cols-2 gap-2.5 shrink-0 sm:flex sm:w-auto">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleRefreshAll}
                     disabled={isUsageLoading}
-                    className="gap-2 text-xs font-medium rounded-xl bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] text-slate-600 dark:text-slate-300 hover:bg-slate-50 shadow-2xs"
+                    className="h-11 sm:h-7 w-full gap-2 text-xs font-medium rounded-xl bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] text-slate-600 dark:text-slate-300 hover:bg-slate-50 shadow-2xs"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isUsageLoading ? 'animate-spin' : ''}`} />
                     <span>Refresh Data</span>
@@ -1071,7 +1095,7 @@ export function AdminDashboard({
                   <Button
                     onClick={openQrModal}
                     size="sm"
-                    className="gap-2 text-xs font-semibold rounded-xl bg-[#4a7cf6] hover:bg-[#3d6fe8] text-white shadow-xs cursor-pointer"
+                    className="h-11 sm:h-7 w-full gap-2 text-xs font-semibold rounded-xl bg-[#4a7cf6] hover:bg-[#3d6fe8] text-white shadow-xs cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
                     <span>Desk QR Stickers</span>
@@ -2390,7 +2414,7 @@ export function AdminDashboard({
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[390px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[390px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
                   <DropdownMenuItem
                     onClick={() => setUserFormRole('STUDENT')}
                     className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
@@ -2495,7 +2519,7 @@ export function AdminDashboard({
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[390px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[390px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
                   <DropdownMenuItem
                     onClick={() => setUserFormRole('STUDENT')}
                     className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
@@ -2596,7 +2620,7 @@ export function AdminDashboard({
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
                   <DropdownMenuItem
                     onClick={() => setWorkspaceFormType('INDIVIDUAL')}
                     className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
@@ -2703,7 +2727,7 @@ export function AdminDashboard({
                   </div>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[370px] max-h-72 overflow-y-auto p-1.5 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-xl rounded-xl">
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[370px] max-h-72 overflow-y-auto p-1.5 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-xl rounded-xl">
                   <DropdownMenuLabel className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1">
                     Individual Stations
                   </DropdownMenuLabel>
@@ -2811,7 +2835,7 @@ export function AdminDashboard({
                   <span>{seatFormStatus}</span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
                   {['AVAILABLE', 'MAINTENANCE', 'OCCUPIED', 'RESERVED'].map((st) => (
                     <DropdownMenuItem
                       key={st}
@@ -2890,7 +2914,7 @@ export function AdminDashboard({
                   </div>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[370px] max-h-72 overflow-y-auto p-1.5 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-xl rounded-xl">
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[370px] max-h-72 overflow-y-auto p-1.5 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-xl rounded-xl">
                   <DropdownMenuLabel className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1">
                     Individual Stations
                   </DropdownMenuLabel>
@@ -2969,7 +2993,7 @@ export function AdminDashboard({
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
                   <DropdownMenuItem
                     onClick={() => setSeatFormType('INDIVIDUAL')}
                     className={`text-xs py-2 px-2.5 rounded-lg cursor-pointer flex items-center justify-between ${
@@ -3024,7 +3048,7 @@ export function AdminDashboard({
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
+                <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
                   {[
                     { value: 'AVAILABLE', label: 'AVAILABLE' },
                     { value: 'MAINTENANCE', label: 'MAINTENANCE' },

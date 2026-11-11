@@ -129,7 +129,7 @@ export function AuthModal() {
     <Dialog open={isAuthModalOpen} onOpenChange={(open) => !open && closeAuthModal()}>
       <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-border bg-card">
         {/* Header */}
-        <DialogHeader className="p-6 pb-4 border-b border-border/60 bg-muted/20">
+        <DialogHeader className="p-4 sm:p-6 sm:pb-4 pb-4 border-b border-border/60 bg-muted/20">
           <div className="flex items-center gap-2.5 mb-2">
             <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground font-black text-xs flex items-center justify-center shadow-xs">
               SE
@@ -154,7 +154,7 @@ export function AuthModal() {
               }}
               className="w-full"
             >
-              <TabsList className="grid grid-cols-2 w-full h-9 p-0.5 bg-muted rounded-lg">
+              <TabsList className="grid grid-cols-2 w-full h-11 sm:h-9 p-0.5 bg-muted rounded-lg">
                 <TabsTrigger
                   value="login"
                   className="text-xs font-semibold data-[state=active]:bg-background cursor-pointer"
@@ -173,7 +173,7 @@ export function AuthModal() {
         </DialogHeader>
 
         {/* Form Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           {errorMsg && (
             <div className="p-3 text-xs rounded-xl border border-destructive/20 bg-destructive/10 text-destructive font-medium">
               {errorMsg}
@@ -222,7 +222,7 @@ export function AuthModal() {
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
                     aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
                   >
                     {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -232,7 +232,7 @@ export function AuthModal() {
 
               <Button
                 type="submit"
-                className="w-full text-xs font-bold gap-2 h-10 mt-2 cursor-pointer"
+                className="w-full text-xs font-bold gap-2 h-11 mt-2 cursor-pointer"
                 disabled={isPending}
               >
                 {loginMutation.isPending ? (
@@ -323,7 +323,7 @@ export function AuthModal() {
                   <button
                     type="button"
                     onClick={() => setShowRegPassword(!showRegPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
                     aria-label={showRegPassword ? 'Hide password' : 'Show password'}
                   >
                     {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -333,7 +333,7 @@ export function AuthModal() {
 
               <Button
                 type="submit"
-                className="w-full text-xs font-bold gap-2 h-10 mt-2 cursor-pointer"
+                className="w-full text-xs font-bold gap-2 h-11 mt-2 cursor-pointer"
                 disabled={isPending}
               >
                 {registerMutation.isPending ? (

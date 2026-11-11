@@ -175,14 +175,14 @@ function LoginForm() {
       </div>
 
       {/* ── Right Panel ── */}
-      <div className="flex flex-col items-center justify-center w-full lg:w-[460px] xl:w-[520px] shrink-0 p-6 sm:p-10 relative min-h-screen lg:min-h-0">
+      <div className="flex flex-col items-center justify-center w-full lg:w-[460px] xl:w-[520px] shrink-0 p-4 pt-20 sm:p-10 relative min-h-screen lg:min-h-0">
         {/* Theme toggle */}
         <div className="absolute top-4 right-4">
           <ThemeToggle />
         </div>
 
         {/* Mobile brand (shows only on small screens) */}
-        <div className="flex lg:hidden items-center gap-2 mb-8">
+        <div className="flex lg:hidden items-center gap-2 mb-6 self-start sm:self-center">
           <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
             <Image src="/se-logo.jpg" alt="SE Lab Logo" width={32} height={32} className="w-full h-full object-cover" />
           </div>
@@ -194,7 +194,7 @@ function LoginForm() {
           <div className="flex rounded-xl border border-border bg-muted/40 p-1 mb-6">
             <button
               onClick={() => switchTab('signin')}
-              className={`flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'signin'
+              className={`flex-1 flex items-center justify-center gap-1.5 h-11 sm:h-9 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'signin'
                 ? 'bg-background shadow-sm text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
                 }`}
@@ -203,7 +203,7 @@ function LoginForm() {
             </button>
             <button
               onClick={() => switchTab('signup')}
-              className={`flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'signup'
+              className={`flex-1 flex items-center justify-center gap-1.5 h-11 sm:h-9 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'signup'
                 ? 'bg-background shadow-sm text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
                 }`}
@@ -261,7 +261,7 @@ function LoginForm() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -283,7 +283,7 @@ function LoginForm() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleQuickLogin('6531501001', 'STUDENT', 'Alex Chen')}
-                    className="flex-1 flex flex-col items-start gap-0.5 px-3 py-2 rounded-lg border border-border bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors cursor-pointer"
+                    className="flex-1 min-h-14 flex flex-col items-start justify-center gap-0.5 px-3 py-2 rounded-lg border border-border bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300">
                       Student Profile
@@ -292,7 +292,7 @@ function LoginForm() {
                   </button>
                   <button
                     onClick={() => handleQuickLogin('admin', 'ADMINISTRATOR', 'Prof. Robert Vance')}
-                    className="flex-1 flex flex-col items-start gap-0.5 px-3 py-2 rounded-lg border border-border bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-colors cursor-pointer"
+                    className="flex-1 min-h-14 flex flex-col items-start justify-center gap-0.5 px-3 py-2 rounded-lg border border-border bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
                       Lab Admin
@@ -374,7 +374,7 @@ function LoginForm() {
                     <button
                       type="button"
                       onClick={() => setShowRegPassword(!showRegPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
