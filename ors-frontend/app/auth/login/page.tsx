@@ -16,6 +16,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { UserRole } from '@/types';
 
 type AuthTab = 'signin' | 'signup';
 
@@ -89,13 +90,13 @@ function LoginForm() {
     }
   };
 
-  const handleQuickLogin = (id: string, role: string, name: string) => {
+  const handleQuickLogin = (id: string, role: UserRole, name: string) => {
     const user = {
       id: role === 'ADMINISTRATOR' ? 1 : 2,
       fullName: name,
       username: id,
       email: id === 'admin' ? 'admin@gmail.com' : `${id}@student.university.edu`,
-      role: role as any,
+      role,
       accountStatus: 'ACTIVE' as const,
     };
     setCurrentUser(user);
@@ -106,10 +107,10 @@ function LoginForm() {
   const switchTab = (tab: AuthTab) => { setActiveTab(tab); setErrorMsg(null); };
 
   const features = [
-    { icon: LayoutGrid, label: '2D Floor Plan', desc: 'Live interactive seat layout showing real-time color-coded availability across 10 zones.' },
-    { icon: Users, label: 'Group Tables 1–5', desc: 'Dedicated group collaboration tables. One student reserves the entire table for their team.' },
-    { icon: MonitorSmartphone, label: 'Individual Pods A–E', desc: 'Individual workstations (A1–A8, B1–B6, C1–C4, D1–D2, E1–E4) for quiet personal study.' },
-    { icon: QrCode, label: 'QR Check-In', desc: 'Activate reserved workstations on arrival by scanning the permanent desk QR sticker.' },
+    { icon: LayoutGrid, label: '2D Floor Plan' },
+    { icon: Users, label: 'Group Tables 1–5' },
+    { icon: MonitorSmartphone, label: 'Individual Pods A–E' },
+    { icon: QrCode, label: 'QR Check-In' },
   ];
 
   return (
@@ -143,16 +144,13 @@ function LoginForm() {
 
           {/* Feature cards grid */}
           <div className="grid grid-cols-2 gap-3 max-w-lg">
-            {features.map(({ icon: Icon, label, desc }) => (
+            {features.map(({ icon: Icon, label }) => (
               <div
                 key={label}
-                className="bg-background/70 dark:bg-slate-900/60 border border-border/60 rounded-xl p-4 space-y-1.5 backdrop-blur-sm"
+                className="bg-background/70 dark:bg-slate-900/60 border border-border/60 rounded-xl p-4 flex items-center gap-1.5 text-primary text-xs font-bold backdrop-blur-sm"
               >
-                <div className="flex items-center gap-1.5 text-primary text-xs font-bold">
-                  <Icon className="w-3.5 h-3.5" />
-                  {label}
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-snug">{desc}</p>
+                <Icon className="w-3.5 h-3.5" />
+                {label}
               </div>
             ))}
           </div>
