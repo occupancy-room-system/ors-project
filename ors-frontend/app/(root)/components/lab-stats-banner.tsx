@@ -23,17 +23,17 @@ export function LabStatsBanner() {
   };
 
   return (
-    <div className="bg-card rounded-xl border border-border/70 px-4 sm:px-6 py-3.5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="bg-card rounded-2xl border border-border/70 p-4 sm:px-6 sm:py-4 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
       {/* Left: Numbers & Breakdown */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs sm:text-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2 text-xs sm:text-sm">
         <div className="flex items-baseline gap-1.5 font-sans">
-          <span className="text-xl sm:text-2xl font-black text-foreground tracking-tight">{available}</span>
+          <span className="text-3xl sm:text-2xl font-black text-foreground tracking-tight">{available}</span>
           <span className="text-muted-foreground font-medium">of {total} desks available</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground">
+        <div className="grid grid-cols-2 gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground sm:flex sm:flex-wrap sm:items-center sm:gap-4">
           {/* In Use */}
-          <div className="flex items-center gap-1.5">
+          <div className="col-span-2 flex items-center gap-1.5 sm:col-auto">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-700 dark:bg-slate-300" />
             <span className="text-foreground font-semibold">{inUse} in use</span>
             {endingSoon > 0 && <span className="text-amber-600 dark:text-amber-400">({endingSoon} ending soon)</span>}
@@ -54,7 +54,7 @@ export function LabStatsBanner() {
       </div>
 
       {/* Right: Live indicator + Last update + Refresh button */}
-      <div className="flex items-center gap-3 text-xs text-muted-foreground self-end md:self-auto shrink-0">
+      <div className="flex items-center gap-2.5 text-xs text-muted-foreground self-start md:self-auto shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-semibold text-emerald-700 dark:text-emerald-400">Live</span>
@@ -63,7 +63,7 @@ export function LabStatsBanner() {
         <button
           type="button"
           onClick={handleRefresh}
-          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
+          className="w-10 h-10 -my-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors cursor-pointer flex items-center justify-center"
           title="Refresh real-time occupancy"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} />
