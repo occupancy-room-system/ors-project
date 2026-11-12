@@ -768,11 +768,11 @@ export function AdminDashboard({
       }));
     }
     return [
-      { studentName: 'Daniel Lee', email: 'daniel.lee@student.university.edu', sessionsCount: 4, totalHours: 7.0 },
-      { studentName: 'Marcus Taylor', email: 'marcus.taylor@student.university.edu', sessionsCount: 4, totalHours: 6.8 },
-      { studentName: 'Sophia Martinez', email: 'sophia.martinez@student.university.edu', sessionsCount: 4, totalHours: 6.2 },
-      { studentName: 'Olivia Davis', email: 'olivia.davis@student.university.edu', sessionsCount: 4, totalHours: 6.1 },
-      { studentName: 'Sarah Kim', email: 'sarah.kim@student.university.edu', sessionsCount: 3, totalHours: 5.6 },
+      { studentName: 'Daniel Lee', email: 'daniel.lee@lamduan.mfu.ac.th', sessionsCount: 4, totalHours: 7.0 },
+      { studentName: 'Marcus Taylor', email: 'marcus.taylor@lamduan.mfu.ac.th', sessionsCount: 4, totalHours: 6.8 },
+      { studentName: 'Sophia Martinez', email: 'sophia.martinez@lamduan.mfu.ac.th', sessionsCount: 4, totalHours: 6.2 },
+      { studentName: 'Olivia Davis', email: 'olivia.davis@lamduan.mfu.ac.th', sessionsCount: 4, totalHours: 6.1 },
+      { studentName: 'Sarah Kim', email: 'sarah.kim@lamduan.mfu.ac.th', sessionsCount: 3, totalHours: 5.6 },
     ];
   }, [usageData]);
 
@@ -2385,7 +2385,7 @@ export function AdminDashboard({
               <Label className="text-xs font-semibold">Email Address (Optional)</Label>
               <Input
                 type="email"
-                placeholder="e.g. john.doe@student.university.edu"
+                placeholder="e.g. john.doe@lamduan.mfu.ac.th"
                 value={userFormEmail}
                 onChange={(e) => setUserFormEmail(e.target.value)}
                 className="text-xs"

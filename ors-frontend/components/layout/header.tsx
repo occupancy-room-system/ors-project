@@ -159,7 +159,7 @@ export function Header() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-xs font-bold leading-none text-foreground">{currentUser.fullName}</p>
                     <p className="text-[11px] leading-none text-muted-foreground font-mono truncate">
-                      {currentUser.email || `${currentUser.username}@student.university.edu`}
+                      {currentUser.email || `${currentUser.username}@lamduan.mfu.ac.th`}
                     </p>
                     <div className="pt-1">
                       <Badge

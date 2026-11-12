@@ -180,6 +180,12 @@ export function FloorPlan2D({
     return false;
   };
 
+  const isWorkspaceInactive = (type: 'INDIVIDUAL' | 'GROUP') =>
+    filterMode !== 'ALL' && filterMode !== type;
+
+  const workspaceOpacity = (type: 'INDIVIDUAL' | 'GROUP') =>
+    isWorkspaceInactive(type) ? 'opacity-30' : 'opacity-100';
+
   // Reusable Desk Component
   const DeskItem = ({
     seat: providedSeat,
@@ -216,6 +222,9 @@ export function FloorPlan2D({
     const label = displayLabel || getDisplayLabel(seat);
     const isSelected = selectedSeat?.seatCode === seat.seatCode || (selectedSeat && selectedSeat.id === seat.id && seat.id !== 0);
     const dimmed = isDeskDimmed(seat, label);
+    const workspaceDisabled =
+      (filterMode === 'INDIVIDUAL' && (tableType ?? seat.tableType) === 'GROUP') ||
+      (filterMode === 'GROUP' && (tableType ?? seat.tableType) === 'INDIVIDUAL');
 
     // Compute status appearance matching screenshot
     let bgBorder = 'bg-white dark:bg-card border-slate-200 dark:border-slate-800 text-foreground hover:border-slate-400';
@@ -254,7 +263,8 @@ export function FloorPlan2D({
       <button
         type="button"
         onClick={() => onSelectSeat(seat)}
-        className={`rounded-lg border px-2 py-1.5 flex items-center justify-between gap-1.5 transition-all cursor-pointer shadow-3xs select-none min-w-[64px] ${bgBorder} ${
+        disabled={workspaceDisabled}
+        className={`rounded-lg border px-2 py-1.5 flex items-center justify-between gap-1.5 transition-all shadow-3xs select-none min-w-[64px] ${workspaceDisabled ? 'cursor-not-allowed' : 'cursor-pointer'} ${bgBorder} ${
           dimmed ? 'opacity-25 grayscale-[0.6]' : 'opacity-100'
         } ${customClass}`}
         title={`${seat.seatCode} - ${seat.status}`}
@@ -521,8 +531,7 @@ export function FloorPlan2D({
             {/* ROW 1: Station A, Station B, Group table 1 */}
             <div className="flex items-center gap-4 sm:gap-5">
               {/* Station A */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station A</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -540,11 +549,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Station B */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station B</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -562,11 +569,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Group table 1 */}
-              {(filterMode === "ALL" || filterMode === "GROUP") && (
-                <div className="rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all ml-2">
+              <div className={`rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all ml-2 ${workspaceOpacity('GROUP')}`}>
                   <span className="font-bold text-xs text-foreground text-center">
                     Group table 1
                   </span>
@@ -585,7 +590,6 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
             </div>
 
             {/* Middle Walkway Label */}
@@ -596,8 +600,7 @@ export function FloorPlan2D({
             {/* ROW 2: Group table 3, Station C, Station D, Station E */}
             <div className="flex items-center gap-4 sm:gap-5">
               {/* Group table 3 */}
-              {(filterMode === "ALL" || filterMode === "GROUP") && (
-                <div className="rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all">
+              <div className={`rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all ${workspaceOpacity('GROUP')}`}>
                   <span className="font-bold text-xs text-foreground text-center">
                     Group table 3
                   </span>
@@ -616,11 +619,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Station C */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station C</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -638,11 +639,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Station D */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[110px] w-auto shrink-0 transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[110px] w-auto shrink-0 transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station D</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -661,11 +660,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Station E */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station E</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -683,14 +680,12 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
             </div>
 
             {/* ROW 3: Group table 5 & Entrance Swing Arc */}
             <div className="flex items-center justify-between gap-6 pt-2">
               {/* Group table 5 */}
-              {(filterMode === "ALL" || filterMode === "GROUP") && (
-                <div className="rounded-[28px] sm:rounded-[32px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 px-5 py-4 flex flex-col items-center shadow-2xs min-w-[240px] w-auto h-auto transition-all">
+              <div className={`rounded-[28px] sm:rounded-[32px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 px-5 py-4 flex flex-col items-center shadow-2xs min-w-[240px] w-auto h-auto transition-all ${workspaceOpacity('GROUP')}`}>
                   <span className="font-bold text-xs text-foreground text-center">
                     Group table 5
                   </span>
@@ -709,7 +704,6 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Architectural Entrance Doorway */}
               <div className="flex flex-col items-center justify-end self-end pr-8 pb-0">
@@ -765,7 +759,7 @@ export function FloorPlan2D({
                   {customPods.map(([podName, podSeats]) => (
                     <div
                       key={podName}
-                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[200px] w-auto transition-all"
+                      className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[200px] w-auto transition-all ${workspaceOpacity(podSeats[0]?.tableType ?? 'INDIVIDUAL')}`}
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-foreground">{podName}</span>
@@ -791,8 +785,7 @@ export function FloorPlan2D({
           </div>
 
           {/* Right Column: Group table 2 (top) and Group table 4 (bottom) */}
-          {(filterMode === "ALL" || filterMode === "GROUP") && (
-            <div className="flex flex-col gap-8 shrink-0 items-center justify-between">
+          <div className={`flex flex-col gap-8 shrink-0 items-center justify-between ${workspaceOpacity('GROUP')}`}>
               {/* Group table 2 */}
               <div className="min-w-[180px] w-auto h-auto rounded-[28px] sm:rounded-[32px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center shadow-2xs transition-all">
                 <span className="font-bold text-xs text-foreground text-center">
@@ -835,7 +828,6 @@ export function FloorPlan2D({
                 </div>
               </div>
             </div>
-          )}
         </div>
       </div>
 
