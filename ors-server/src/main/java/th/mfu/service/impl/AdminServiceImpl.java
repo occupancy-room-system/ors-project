@@ -202,7 +202,7 @@ public class AdminServiceImpl implements AdminService {
             Map<String, Object> uData = new HashMap<>();
             uData.put("userId", uid);
             uData.put("userName", u != null ? u.getFullName().replaceAll("\\s*\\([^)]*\\)", "") : "Student #" + uid);
-            uData.put("userEmail", u != null ? u.getEmail() : "user" + uid + "@student.university.edu");
+            uData.put("userEmail", u != null ? u.getEmail() : "user" + uid + "@lamduan.mfu.ac.th");
             uData.put("totalMinutes", entry.getValue().minutes);
             uData.put("totalHours", Math.round((entry.getValue().minutes / 60.0) * 10.0) / 10.0);
             uData.put("sessionCount", entry.getValue().count);
@@ -464,4 +464,3 @@ public class AdminServiceImpl implements AdminService {
         sessionRepository.deleteById(sessionId);
     }
 }
-

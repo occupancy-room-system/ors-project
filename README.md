@@ -89,13 +89,11 @@ npm run dev
 
 | Role | Name | Email | Password |
 |---|---|---|---|
-| **Administrator** | Prof. Robert Vance | `admin@university.edu` | `AdminPass123!` |
-| **Student** | Alex Chen | `alex.chen@student.university.edu` | `StudentPass123!` |
-| **Student** | Sarah Kim | `sarah.kim@student.university.edu` | `StudentPass123!` |
-| **Student** | Marcus Taylor | `marcus.taylor@student.university.edu` | `StudentPass123!` |
-| **Student** | Emily Zhao | `emily.zhao@student.university.edu` | `StudentPass123!` |
-
-*(The Web UI also provides one-click account switching in the login modal).*
+| **Administrator** | Administrator (`admin`) | `admin@gmail.com` | `admin123` |
+| **Student** | Alex Chen | `alex.chen@lamduan.mfu.ac.th` | `StudentPass123!` |
+| **Student** | Sarah Kim | `sarah.kim@lamduan.mfu.ac.th` | `StudentPass123!` |
+| **Student** | Marcus Taylor | `marcus.taylor@lamduan.mfu.ac.th` | `StudentPass123!` |
+| **Student** | Emily Zhao | `emily.zhao@lamduan.mfu.ac.th` | `StudentPass123!` |
 
 ---
 

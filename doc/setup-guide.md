@@ -74,9 +74,9 @@
 
 | Role | Name | Email | Password |
 |---|---|---|---|
-| **Administrator** | Prof. Robert Vance | `admin@university.edu` | `AdminPass123!` |
-| **Student** | Alex Chen | `alex.chen@student.university.edu` | `StudentPass123!` |
-| **Student** | Sarah Kim | `sarah.kim@student.university.edu` | `StudentPass123!` |
+| **Administrator** | Administrator (`admin`) | `admin@gmail.com` | `admin123` |
+| **Student** | Alex Chen | `alex.chen@lamduan.mfu.ac.th` | `StudentPass123!` |
+| **Student** | Sarah Kim | `sarah.kim@lamduan.mfu.ac.th` | `StudentPass123!` |
 
 ---
 

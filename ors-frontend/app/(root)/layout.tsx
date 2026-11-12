@@ -17,13 +17,13 @@ export default function RootGroupLayout({ children }: { children: React.ReactNod
 
   // Client-side auth guard: redirect to login if not authenticated after hydration
   useEffect(() => {
-    if (isHydrated && !currentUser) {
+    if (isHydrated && !currentUser && !isAdminRoute) {
       router.replace(`${ROUTES.LOGIN}?redirect=${encodeURIComponent(pathname)}`);
     }
-  }, [isHydrated, currentUser, pathname, router]);
+  }, [isHydrated, currentUser, isAdminRoute, pathname, router]);
 
   // Show nothing while hydrating or redirecting
-  if (!isHydrated || !currentUser) {
+  if (!isHydrated || (!currentUser && !isAdminRoute)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />

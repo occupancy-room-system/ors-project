@@ -2,7 +2,6 @@
 
 import React, { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import { useLoginMutation, useRegisterMutation } from '@/hooks/use-auth-query';
 import { useApp } from '@/hooks/use-app-store';
 import { ROUTES } from '@/config/routes';
@@ -11,12 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Lock, Eye, EyeOff, Loader2, ArrowRight,
-  GraduationCap,
+  Building2, GraduationCap,
   User, LayoutGrid, QrCode, Users, MonitorSmartphone,
   CheckCircle2,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
-import { UserRole } from '@/types';
 
 type AuthTab = 'signin' | 'signup';
 
@@ -58,6 +56,10 @@ function LoginForm() {
     setErrorMsg(null);
     try {
       const { user } = await loginMutation.mutateAsync({ studentId: studentId.trim(), password });
+      if (user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN') {
+        setErrorMsg('Administrator accounts must sign in from the /admin page.');
+        return;
+      }
       setCurrentUser(user);
       showToast(`Welcome back, ${user.fullName || user.username}!`, 'success');
       router.push(getRedirectPath(user.role));
@@ -90,20 +92,6 @@ function LoginForm() {
     }
   };
 
-  const handleQuickLogin = (id: string, role: UserRole, name: string) => {
-    const user = {
-      id: role === 'ADMINISTRATOR' ? 1 : 2,
-      fullName: name,
-      username: id,
-      email: id === 'admin' ? 'admin@gmail.com' : `${id}@student.university.edu`,
-      role,
-      accountStatus: 'ACTIVE' as const,
-    };
-    setCurrentUser(user);
-    showToast(`Signed in as ${name}`, 'success');
-    router.push(getRedirectPath(role));
-  };
-
   const switchTab = (tab: AuthTab) => { setActiveTab(tab); setErrorMsg(null); };
 
   const features = [
@@ -120,8 +108,8 @@ function LoginForm() {
         {/* Top brand */}
         <div>
           <div className="flex items-center gap-2.5 mb-10">
-            <div className="w-9 h-9 rounded-xl overflow-hidden shadow-sm shrink-0">
-              <Image src="/se-logo.jpg" alt="SE Lab Logo" width={36} height={36} className="w-full h-full object-cover" />
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Building2 className="w-5 h-5" aria-hidden="true" />
             </div>
             <div>
               <p className="text-sm font-bold text-foreground leading-tight">SE Lab Occupancy</p>
@@ -181,8 +169,8 @@ function LoginForm() {
 
         {/* Mobile brand (shows only on small screens) */}
         <div className="flex lg:hidden items-center gap-2 mb-6 self-start sm:self-center">
-          <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0">
-            <Image src="/se-logo.jpg" alt="SE Lab Logo" width={32} height={32} className="w-full h-full object-cover" />
+          <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <Building2 className="w-4 h-4" aria-hidden="true" />
           </div>
           <span className="text-sm font-bold">SE Lab Occupancy</span>
         </div>
@@ -223,36 +211,40 @@ function LoginForm() {
               <div>
                 <h3 className="text-xl font-black text-foreground">Sign In to Your Account</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Enter your Student ID (or Admin ID) and password to access reservations.
+                  Enter your Student ID and password to access reservations.
                 </p>
               </div>
 
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="si-studentId" className="text-xs font-semibold">ID / Student ID</Label>
-                  <Input
-                    id="si-studentId"
-                    type="text"
-                    placeholder="6831503119"
-                    value={studentId}
-                    onChange={(e) => setStudentId(e.target.value)}
-                    className="text-xs h-11"
-                    disabled={isPending}
-                    autoComplete="username"
-                    autoFocus
-                  />
+                  <Label htmlFor="si-studentId" className="text-xs font-semibold">Student ID</Label>
+                  <div className="relative">
+                    <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="si-studentId"
+                      type="text"
+                      placeholder="e.g. 6531501001"
+                      value={studentId}
+                      onChange={(e) => setStudentId(e.target.value)}
+                      className="pl-9 text-xs h-11"
+                      disabled={isPending}
+                      autoComplete="username"
+                      autoFocus
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="si-password" className="text-xs font-semibold">Password</Label>
                   <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                     <Input
                       id="si-password"
                       type={showPassword ? 'text' : 'password'}
                       placeholder="••••••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pr-9 text-xs h-11"
+                      className="pl-9 pr-9 text-xs h-11"
                       disabled={isPending}
                       autoComplete="current-password"
                     />
@@ -260,6 +252,7 @@ function LoginForm() {
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -274,31 +267,6 @@ function LoginForm() {
                   )}
                 </Button>
               </form>
-
-              {/* Quick fill */}
-              <div>
-                <p className="text-[10px] uppercase font-bold text-muted-foreground mb-2 tracking-wide">Quick-fill test credentials</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleQuickLogin('6531501001', 'STUDENT', 'Alex Chen')}
-                    className="flex-1 min-h-14 flex flex-col items-start justify-center gap-0.5 px-3 py-2 rounded-lg border border-border bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/60 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300">
-                      Student Profile
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-mono">ID: 6531501001</span>
-                  </button>
-                  <button
-                    onClick={() => handleQuickLogin('admin', 'ADMINISTRATOR', 'Prof. Robert Vance')}
-                    className="flex-1 min-h-14 flex flex-col items-start justify-center gap-0.5 px-3 py-2 rounded-lg border border-border bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/60 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300">
-                      Lab Admin
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-mono">ID: admin</span>
-                  </button>
-                </div>
-              </div>
 
               <p className="text-center text-xs text-muted-foreground">
                 Don&apos;t have an account yet?{' '}
