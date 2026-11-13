@@ -98,6 +98,14 @@ import { ROUTES } from '@/config/routes';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { FloorPlan2D } from '@/app/(root)/components/floor-plan-2d';
+import {
+  isLabOpenAt,
+  getLabOperatingStatus,
+  LAB_HOURS_DISPLAY,
+  LAB_TIMEZONE,
+  LAB_OPENS_HOUR,
+  LAB_CLOSES_HOUR,
+} from '@/utils/lab-hours';
 
 interface AdminDashboardProps {
   roomData: OccupancyMapResponse;
@@ -207,6 +215,21 @@ export function AdminDashboard({
   const [isAddSeatOpen, setIsAddSeatOpen] = useState(false);
   const [isEditSeatOpen, setIsEditSeatOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+
+  // Time control & lab operating hours state (09:00 AM - 05:00 PM)
+  const [currentBangkokTime, setCurrentBangkokTime] = useState<Date>(() => new Date());
+  const [isTimeControlModalOpen, setIsTimeControlModalOpen] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBangkokTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const labStatus = useMemo(() => {
+    return getLabOperatingStatus(currentBangkokTime);
+  }, [currentBangkokTime]);
 
   // Custom workspaces state (registered workspaces)
   const [customWorkspaces, setCustomWorkspaces] = useState<
@@ -896,6 +919,10 @@ export function AdminDashboard({
                 <div className="flex items-center gap-2.5">
                   <Monitor className={`w-4 h-4 ${activeSection === 'workstations' ? 'text-[#4a7cf6]' : 'text-slate-400'}`} />
                   <span>Workstations</span>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${labStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`}
+                    title={labStatus.isOpen ? 'SE Lab Open (09:00 - 17:00)' : 'SE Lab Closed (Outside 09:00 - 17:00)'}
+                  />
                 </div>
                 <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                   activeSection === 'workstations'
@@ -1052,7 +1079,7 @@ export function AdminDashboard({
 
           <button
             type="button"
-            onClick={() => showToast('ORS Lab Administrator Portal v2.4. Open 08:00 - 22:00.', 'info')}
+            onClick={() => showToast('ORS Lab Administrator Portal v2.4. Operating Hours: 09:00 - 17:00 (Bangkok).', 'info')}
             className="w-full flex items-center gap-2 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer px-1 pt-0.5"
           >
             <HelpCircle className="w-3.5 h-3.5" />
@@ -1628,6 +1655,134 @@ export function AdminDashboard({
                 </div>
               </div>
 
+              {/* Lab Operating Hours & Workstation Time Control Card */}
+              <div className="rounded-2xl border border-[#edf1f7] dark:border-[#232c3d] bg-gradient-to-br from-white via-[#fcfdfe] to-[#f8fafc] dark:from-[#161c26] dark:via-[#161c26] dark:to-[#131923] p-5 shadow-[0_2px_10px_rgba(0,0,0,0.015)] space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  {/* Left: Schedule and Status */}
+                  <div className="flex items-start gap-3.5">
+                    <div
+                      className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs ${
+                        labStatus.isOpen
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50'
+                          : 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/50'
+                      }`}
+                    >
+                      <Clock className="w-5 h-5" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                          Workstation Time Control
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
+                            labStatus.isOpen
+                              ? 'border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50'
+                              : 'border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50'
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                              labStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                            }`}
+                          />
+                          {labStatus.isOpen ? 'Active Operating Hours' : 'Outside Operating Hours (Closed)'}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-baseline gap-2.5 flex-wrap">
+                        <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">
+                          SE Lab Schedule: {LAB_HOURS_DISPLAY}
+                        </h2>
+                        <span className="text-xs font-mono font-medium text-slate-500 dark:text-slate-400">
+                          ({LAB_TIMEZONE})
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                        {labStatus.isOpen ? (
+                          <>
+                            Client check-ins and workstation reservations are{' '}
+                            <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">Active</strong>.
+                            Closing deadline at 05:00 PM ({Math.floor(labStatus.minutesUntilClose / 60)}h{' '}
+                            {labStatus.minutesUntilClose % 60}m remaining).
+                          </>
+                        ) : (
+                          <>
+                            Client check-ins and workstation reservations are{' '}
+                            <strong className="text-amber-600 dark:text-amber-400 font-semibold">Restricted</strong>.
+                            Student reservations unlock at 09:00 AM Bangkok Time.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: Live Clock & Quick Action */}
+                  <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row items-start sm:items-center md:items-end lg:items-center gap-3 shrink-0">
+                    <div className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900/80 border border-[#edf1f7] dark:border-slate-800 shadow-2xs text-left sm:text-right md:text-left lg:text-right">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 justify-start sm:justify-end md:justify-start lg:justify-end">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
+                        Live Bangkok Time
+                      </div>
+                      <div className="text-sm font-mono font-extrabold text-slate-800 dark:text-white mt-0.5">
+                        {labStatus.timeString}
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-medium">
+                        {labStatus.dateString}
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsTimeControlModalOpen(true)}
+                      className="gap-2 text-xs font-semibold rounded-xl bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] text-slate-700 dark:text-slate-300 hover:bg-[#f0f5ff] hover:text-[#4a7cf6] shadow-2xs h-9 cursor-pointer"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                      <span>Time Control Details</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Operating Hours Progress Bar */}
+                <div className="pt-2 border-t border-[#f4f6fa] dark:border-[#232c3d] space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-slate-700 dark:text-slate-300 font-bold">09:00 AM</span>
+                      <span className="text-slate-400 font-normal">Lab Opening</span>
+                    </div>
+                    <div className="text-center">
+                      {labStatus.isOpen ? (
+                        <span className="font-semibold text-[#4070d8] dark:text-blue-300">
+                          {labStatus.progress}% of daily operating window elapsed
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-amber-600 dark:text-amber-400">
+                          Lab is currently closed (Outside 09:00 - 17:00 window)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 font-normal">Lab Closing</span>
+                      <span className="font-mono text-slate-700 dark:text-slate-300 font-bold">05:00 PM</span>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 rounded-full bg-[#f1f4fa] dark:bg-slate-800 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        labStatus.isOpen
+                          ? 'bg-gradient-to-r from-[#4a7cf6] to-emerald-500'
+                          : 'bg-amber-400 dark:bg-amber-500'
+                      }`}
+                      style={{ width: `${labStatus.isOpen ? Math.max(5, labStatus.progress) : 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {workstationViewMode === 'table' ? (
                 <>
                   {/* Filters Bar */}
@@ -1715,8 +1870,29 @@ export function AdminDashboard({
                   </DropdownMenu>
                 </div>
 
-                <div className="text-xs text-slate-500 font-medium">
-                  Showing <strong className="text-slate-900 dark:text-white">{filteredSeats.length}</strong> of {roomData.seats.length} workstations
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div
+                    onClick={() => setIsTimeControlModalOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-[#edf1f7] dark:border-slate-800 bg-[#f8fafc] dark:bg-slate-900 text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shadow-2xs"
+                    title="Click to view time control details"
+                  >
+                    <Clock className={`w-3.5 h-3.5 ${labStatus.isOpen ? 'text-emerald-500' : 'text-amber-500'}`} />
+                    <span className="text-slate-400 font-medium">Schedule:</span>
+                    <span className="font-mono font-bold text-slate-700 dark:text-slate-200">09:00–17:00</span>
+                    <span
+                      className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded ${
+                        labStatus.isOpen
+                          ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300'
+                      }`}
+                    >
+                      {labStatus.isOpen ? 'OPEN' : 'CLOSED'}
+                    </span>
+                  </div>
+
+                  <div className="text-xs text-slate-500 font-medium">
+                    Showing <strong className="text-slate-900 dark:text-white">{filteredSeats.length}</strong> of {roomData.seats.length} workstations
+                  </div>
                 </div>
               </div>
 
@@ -1848,6 +2024,30 @@ export function AdminDashboard({
 
               {/* Admin 2D Map Interactive Management Panel */}
               <div className="p-5 rounded-2xl border border-[#edf1f7] dark:border-[#1f293d] bg-white dark:bg-[#111827] shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-4">
+                {/* Time Control Status Banner for 2D Map */}
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Clock className={`w-4 h-4 ${labStatus.isOpen ? 'text-emerald-500' : 'text-amber-500'}`} />
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      {labStatus.isOpen ? 'Operating Window Active: 09:00 AM – 05:00 PM' : 'Outside Operating Window (09:00 AM – 05:00 PM)'}
+                    </span>
+                    <span className="text-slate-400">·</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      {labStatus.isOpen
+                        ? `Closing deadline at 17:00 (${Math.floor(labStatus.minutesUntilClose / 60)}h ${labStatus.minutesUntilClose % 60}m remaining)`
+                        : 'Desk reservations locked until 09:00 AM'}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsTimeControlModalOpen(true)}
+                    className="h-7 text-[11px] font-bold text-[#4a7cf6] hover:bg-[#4a7cf6]/10 px-2 cursor-pointer"
+                  >
+                    View Schedule Policy →
+                  </Button>
+                </div>
+
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#edf1f7] dark:border-[#1f293d] pb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[#f0f5ff] dark:bg-blue-950/60 text-[#4a7cf6] flex items-center justify-center font-bold text-sm">
@@ -1958,7 +2158,7 @@ export function AdminDashboard({
 
                 {/* Selected workstation details metadata grid */}
                 {adminSelectedSeat && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs pt-1">
                     <div className="p-3 rounded-xl bg-[#f8fafc] dark:bg-slate-900/60 border border-[#edf1f7] dark:border-slate-800">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Station Pod</span>
                       <span className="font-extrabold text-slate-800 dark:text-white mt-0.5 block">{adminSelectedSeat.podLabel}</span>
@@ -1997,6 +2197,15 @@ export function AdminDashboard({
                           ? 'Under repair'
                           : 'Available for check-in'}
                       </span>
+                    </div>
+                    <div className="p-3 rounded-xl bg-[#f8fafc] dark:bg-slate-900/60 border border-[#edf1f7] dark:border-slate-800">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Time Control (9am-5pm)</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${labStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                        <span className={`font-bold ${labStatus.isOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                          {labStatus.isOpen ? 'Check-in Open' : 'Closed Outside Hours'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -3472,6 +3681,110 @@ export function AdminDashboard({
               {isDeleting ? 'Deleting...' : 'Yes, Delete'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* -------------------------------------------------------------------- */}
+      {/* MODAL: LAB OPERATING HOURS & TIME CONTROL SETTINGS                   */}
+      {/* -------------------------------------------------------------------- */}
+      <Dialog open={isTimeControlModalOpen} onOpenChange={setIsTimeControlModalOpen}>
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-2xl bg-white dark:bg-[#161c26] border border-[#edf1f7] dark:border-[#232c3d] shadow-xl">
+          <div className="p-6 pb-5 bg-gradient-to-br from-[#f0f5ff] via-white to-[#f8fafc] dark:from-blue-950/40 dark:via-[#161c26] dark:to-[#131923] border-b border-[#edf1f7] dark:border-[#232c3d]">
+            <DialogHeader className="text-left">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-[#4a7cf6] text-white flex items-center justify-center font-bold shadow-xs">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-extrabold text-foreground">
+                    Workstation Time Control &amp; Schedule
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    Operating window parameters governing student workstation reservations and check-ins.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="grid grid-cols-2 gap-2.5 mt-3">
+              <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-900/60 border border-[#edf1f7] dark:border-[#232c3d]">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Status</div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`w-2 h-2 rounded-full ${labStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                  <span className={`text-xs font-bold ${labStatus.isOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    {labStatus.isOpen ? 'OPEN FOR USE' : 'CLOSED / AFTER HOURS'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-900/60 border border-[#edf1f7] dark:border-[#232c3d]">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Time Zone</div>
+                <div className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 mt-1 truncate">
+                  {LAB_TIMEZONE} (UTC+7)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-4 text-xs">
+            {/* Schedule Specifications */}
+            <div className="space-y-2">
+              <span className="font-extrabold text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
+                Enforced Operating Schedule
+              </span>
+              <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Standard Daily Hours:</span>
+                  <span className="font-mono font-extrabold text-slate-800 dark:text-white">
+                    09:00 AM – 05:00 PM (9:00 - 17:00)
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Auto-Session Termination:</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-white">
+                    17:00:00 (Closing Deadline)
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Reservation Check-in Grace:</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-white">
+                    20 Minutes After Start
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Live Clock (Bangkok):</span>
+                  <span className="font-mono font-bold text-[#4a7cf6] dark:text-blue-400">
+                    {labStatus.timeString}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Client Enforcement Note */}
+            <div className="p-3.5 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/70 dark:bg-blue-950/20 text-slate-600 dark:text-slate-300 space-y-1.5 leading-relaxed">
+              <div className="flex items-center gap-1.5 font-bold text-[#4070d8] dark:text-blue-300">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Backend &amp; Client Synchronized Enforcement</span>
+              </div>
+              <p className="text-[11px]">
+                Both the client workstation selection page and backend API (<code className="px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-[10px] font-mono">LabOperatingHours.java</code>) reject reservation creation and physical desk check-ins outside 09:00 to 17:00.
+              </p>
+            </div>
+
+            <DialogFooter className="pt-2 flex items-center justify-between sm:justify-between w-full">
+              <span className="text-[11px] text-slate-400">
+                Staff Administrator Control
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsTimeControlModalOpen(false)}
+                className="text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl px-4 cursor-pointer"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

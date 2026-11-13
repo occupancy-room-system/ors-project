@@ -74,8 +74,68 @@ function getLabTimeOnDate(date: Date, hour: number) {
   return new Date(targetWallTime.getTime() - offset);
 }
 
+export const LAB_OPENS_HOUR = 9;
+export const LAB_CLOSES_HOUR = 17;
+export const LAB_HOURS_DISPLAY = '09:00 AM – 05:00 PM';
+export const LAB_TIMEZONE = LAB_TIME_ZONE;
+
+export function getLabCurrentTimeInBangkok(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: LAB_TIME_ZONE,
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).format(date);
+}
+
+export function getLabCurrentDateInBangkok(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: LAB_TIME_ZONE,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(date);
+}
+
+export function getLabOperatingStatus(now: Date = new Date()) {
+  const openTime = getLabTimeOnDate(now, LAB_OPENS_HOUR);
+  const closeTime = getLabTimeOnDate(now, LAB_CLOSES_HOUR);
+  const isOpen = now >= openTime && now < closeTime;
+
+  let progress = 0;
+  if (isOpen) {
+    const total = closeTime.getTime() - openTime.getTime();
+    const elapsed = now.getTime() - openTime.getTime();
+    progress = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+  }
+
+  const timeString = getLabCurrentTimeInBangkok(now);
+  const dateString = getLabCurrentDateInBangkok(now);
+
+  let minutesUntilClose = 0;
+  let minutesUntilOpen = 0;
+  if (isOpen) {
+    minutesUntilClose = Math.max(0, Math.round((closeTime.getTime() - now.getTime()) / 60000));
+  } else if (now < openTime) {
+    minutesUntilOpen = Math.max(0, Math.round((openTime.getTime() - now.getTime()) / 60000));
+  }
+
+  return {
+    isOpen,
+    openTime,
+    closeTime,
+    progress,
+    timeString,
+    dateString,
+    minutesUntilClose,
+    minutesUntilOpen,
+  };
+}
+
 export function isLabOpenAt(date: Date) {
-  return date >= getLabTimeOnDate(date, 9) && date < getLabTimeOnDate(date, 17);
+  return date >= getLabTimeOnDate(date, LAB_OPENS_HOUR) && date < getLabTimeOnDate(date, LAB_CLOSES_HOUR);
 }
 
 export function getLabSessionEndTime(start: Date, durationHours: number) {
