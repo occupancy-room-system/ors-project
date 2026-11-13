@@ -115,7 +115,7 @@ export function AdminDashboard({
   onTerminateSession,
 }: AdminDashboardProps) {
   const router = useRouter();
-  const { currentUser, setCurrentUser, showToast } = useApp();
+  const { currentUser, setCurrentUser, showToast, openUserDetailModal } = useApp();
   const logoutMutation = useLogoutMutation();
 
   // Active section in left sidebar
@@ -123,8 +123,44 @@ export function AdminDashboard({
 
   // Usage reports state
   const [usageInterval, setUsageInterval] = useState<UsageInterval>('weekly');
-  const [startDate, setStartDate] = useState<string>('2026-10-19');
-  const [endDate, setEndDate] = useState<string>('2026-11-02');
+  const [startDate, setStartDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  // Time period preset handler
+  const handleSelectPreset = (preset: '7d' | '14d' | '30d' | '90d' | 'year' | 'all') => {
+    const now = new Date();
+    const end = now.toISOString().split('T')[0];
+    let start = '';
+    const d = new Date(now);
+
+    if (preset === '7d') {
+      d.setDate(d.getDate() - 7);
+      start = d.toISOString().split('T')[0];
+    } else if (preset === '14d') {
+      d.setDate(d.getDate() - 14);
+      start = d.toISOString().split('T')[0];
+    } else if (preset === '30d') {
+      d.setDate(d.getDate() - 30);
+      start = d.toISOString().split('T')[0];
+    } else if (preset === '90d') {
+      d.setDate(d.getDate() - 90);
+      start = d.toISOString().split('T')[0];
+    } else if (preset === 'year') {
+      d.setFullYear(d.getFullYear() - 1);
+      start = d.toISOString().split('T')[0];
+    } else if (preset === 'all') {
+      start = '2020-01-01';
+    }
+
+    setStartDate(start);
+    setEndDate(end);
+  };
 
   // React Query calls
   const { data: usageData, refetch: refetchUsage, isLoading: isUsageLoading } = useUsageMetricsQuery({
@@ -743,21 +779,18 @@ export function AdminDashboard({
   const totalCount = roomData.seats.length || 54;
   const activePercent = totalCount > 0 ? Math.round((occupiedCount / (totalCount - maintenanceCount || 1)) * 100) : 0;
 
-  // Chart data from usageMetrics or fallback
+  // Chart data from usageMetrics or empty
   const timelineData = useMemo(() => {
     if (usageData && usageData.timeline && usageData.timeline.length > 0) {
       return usageData.timeline.map((t) => ({
-        label: t.dateKey,
+        label: t.periodLabel || t.dateKey,
         hours: t.totalHours,
       }));
     }
-    return [
-      { label: 'Oct 19 - Oct 25', hours: 38.4 },
-      { label: 'Oct 26 - Nov 1', hours: 32.2 },
-    ];
+    return [];
   }, [usageData]);
 
-  // Top active students from usageMetrics or fallback
+  // Top active students from usageMetrics (empty until real data comes)
   const topStudents = useMemo(() => {
     if (usageData && usageData.topUsers && usageData.topUsers.length > 0) {
       return usageData.topUsers.map((u) => ({
@@ -767,13 +800,7 @@ export function AdminDashboard({
         totalHours: u.totalHours,
       }));
     }
-    return [
-      { studentName: 'Daniel Lee', email: 'daniel.lee@lamduan.mfu.ac.th', sessionsCount: 4, totalHours: 7.0 },
-      { studentName: 'Marcus Taylor', email: 'marcus.taylor@lamduan.mfu.ac.th', sessionsCount: 4, totalHours: 6.8 },
-      { studentName: 'Sophia Martinez', email: 'sophia.martinez@lamduan.mfu.ac.th', sessionsCount: 4, totalHours: 6.2 },
-      { studentName: 'Olivia Davis', email: 'olivia.davis@lamduan.mfu.ac.th', sessionsCount: 4, totalHours: 6.1 },
-      { studentName: 'Sarah Kim', email: 'sarah.kim@lamduan.mfu.ac.th', sessionsCount: 3, totalHours: 5.6 },
-    ];
+    return [];
   }, [usageData]);
 
   // Initials helper
@@ -784,13 +811,27 @@ export function AdminDashboard({
     return name.slice(0, 2).toUpperCase();
   };
 
+  // Short and clean profile name (e.g. "Admin", "Alex K.")
+  const getCleanShortName = (name?: string) => {
+    if (!name) return 'Admin';
+    const trimmed = name.trim();
+    if (/^(ors\s+)?admin(istrator)?$/i.test(trimmed)) {
+      return 'Admin';
+    }
+    const parts = trimmed.split(/\s+/);
+    if (parts.length > 1) {
+      return `${parts[0]} ${parts[1][0]}.`;
+    }
+    return trimmed.length > 10 ? `${trimmed.slice(0, 9)}…` : trimmed;
+  };
+
   return (
-    <div className="w-full min-h-screen flex flex-col md:flex-row bg-white dark:bg-[#0f141c] font-sans antialiased text-slate-800 dark:text-slate-100">
+    <div className="w-full min-h-screen md:h-screen md:overflow-hidden flex flex-col md:flex-row bg-white dark:bg-[#0f141c] font-sans antialiased text-slate-800 dark:text-slate-100">
       {/* -------------------------------------------------------------------- */}
       {/* 1. LEFT SIDEBAR (Matching media_1793676626285_d7600dd0.jpg)         */}
       {/* -------------------------------------------------------------------- */}
-      <aside className="hidden w-64 shrink-0 bg-white dark:bg-[#161c26] border-r border-[#edf1f7] dark:border-[#232c3d] md:flex md:flex-col justify-between select-none shadow-[1px_0_4px_rgba(0,0,0,0.01)]">
-        <div>
+      <aside className="hidden w-64 shrink-0 bg-white dark:bg-[#161c26] border-r border-[#edf1f7] dark:border-[#232c3d] md:flex md:flex-col justify-between md:h-screen md:sticky md:top-0 select-none shadow-[1px_0_4px_rgba(0,0,0,0.01)] z-30">
+        <div className="flex-1 overflow-y-auto">
           {/* Logo Brand Header */}
           <div className="h-16 px-5 border-b border-[#edf1f7] dark:border-[#232c3d] flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#4a7cf6] text-white flex items-center justify-center font-bold shadow-xs">
@@ -940,22 +981,79 @@ export function AdminDashboard({
           </div>
         </div>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-[#edf1f7] dark:border-[#232c3d] space-y-3">
-          <div className="p-2.5 rounded-xl bg-[#fbfcfd] dark:bg-slate-900/40 border border-[#edf1f7] dark:border-[#232c3d] flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[#f0f5ff] dark:bg-blue-950/60 text-[#4a7cf6] dark:text-blue-400 flex items-center justify-center shrink-0">
-              <Layers className="w-3.5 h-3.5" />
-            </div>
-            <div className="leading-tight">
-              <div className="text-xs font-semibold text-slate-800 dark:text-white">Turing Hall 101</div>
-              <div className="text-[10px] text-slate-400 font-mono">SE-LAB-101</div>
-            </div>
-          </div>
+        {/* Sidebar Footer - Always visible at bottom left without scrolling */}
+        <div className="p-3 border-t border-[#edf1f7] dark:border-[#232c3d] shrink-0 space-y-2 bg-white dark:bg-[#161c26]">
+          {/* User Account / Profile at Bottom Left Space */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="w-full flex items-center justify-between p-2 rounded-xl border border-[#edf1f7] dark:border-[#232c3d] bg-white dark:bg-[#161c26] hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer text-left select-none group shadow-2xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-[#f0f5ff] dark:bg-blue-950 text-[#4a7cf6] dark:text-blue-300 text-[11px] font-bold flex items-center justify-center shrink-0">
+                  {getInitials(currentUser?.fullName || 'Admin')}
+                </div>
+                <div className="min-w-0 flex-1 leading-tight">
+                  <div className="text-xs font-bold text-slate-800 dark:text-white truncate group-hover:text-[#4a7cf6] transition-colors">
+                    {getCleanShortName(currentUser?.fullName)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate flex items-center gap-1">
+                    <span>Admin</span>
+                    <span>·</span>
+                    <span className="text-primary hover:underline font-medium">Edit info</span>
+                  </div>
+                </div>
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 shrink-0 ml-1" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" className="w-60 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg mb-1">
+              <DropdownMenuLabel
+                onClick={openUserDetailModal}
+                className="font-normal cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors"
+                title="Click to edit user details"
+              >
+                <div className="flex flex-col space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold leading-none text-slate-800 dark:text-white truncate">
+                      {currentUser?.fullName || 'Administrator'}
+                    </p>
+                    <span className="text-[10px] text-primary font-medium hover:underline">Edit</span>
+                  </div>
+                  <p className="text-[11px] leading-none text-slate-400 font-mono truncate">
+                    {currentUser?.email || 'admin@mfu.ac.th'}
+                  </p>
+                  <div className="pt-1">
+                    <Badge variant="secondary" className="text-[9px] font-bold bg-[#f0f5ff] text-[#4a7cf6] dark:bg-blue-950 dark:text-blue-300">
+                      {currentUser?.role || 'ADMINISTRATOR'}
+                    </Badge>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={openUserDetailModal}
+                className="text-xs gap-2 cursor-pointer font-medium hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <UserCog className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                Edit Profile Details
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={async () => {
+                  await logoutMutation.mutateAsync();
+                  setCurrentUser(null);
+                  showToast('Logged out of Admin Console.', 'info');
+                  router.push(ROUTES.HOME);
+                }}
+                className="text-xs gap-2 text-destructive cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/30"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <button
             type="button"
             onClick={() => showToast('ORS Lab Administrator Portal v2.4. Open 08:00 - 22:00.', 'info')}
-            className="w-full flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer px-1"
+            className="w-full flex items-center gap-2 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer px-1 pt-0.5"
           >
             <HelpCircle className="w-3.5 h-3.5" />
             <span>Help &amp; support</span>
@@ -966,7 +1064,7 @@ export function AdminDashboard({
       {/* -------------------------------------------------------------------- */}
       {/* 2. MAIN WORKSPACE AREA                                               */}
       {/* -------------------------------------------------------------------- */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto bg-[#fafbfc] dark:bg-[#0f141c]">
+      <div className="flex-1 flex flex-col min-w-0 md:h-screen overflow-y-auto overflow-x-hidden bg-[#fafbfc] dark:bg-[#0f141c]">
         {/* Top Navbar */}
         <header className="h-16 px-4 sm:px-8 border-b border-[#edf1f7] dark:border-[#232c3d] bg-white/95 dark:bg-[#161c26]/95 backdrop-blur-sm flex items-center justify-between shrink-0">
           {/* Breadcrumb */}
@@ -987,51 +1085,60 @@ export function AdminDashboard({
             </span>
           </div>
 
-          {/* User Profile Pill with Sign Out Dropdown + Theme Toggle */}
-          <div className="flex items-center gap-3">
+          {/* Top Right: Theme Toggle (+ compact profile for mobile view) */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <ThemeToggle />
 
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border border-[#edf1f7] dark:border-[#232c3d] bg-white dark:bg-[#161c26] select-none hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs">
-                <div className="w-6 h-6 rounded-full bg-[#f0f5ff] text-[#4a7cf6] text-[10px] font-bold flex items-center justify-center">
-                  {getInitials(currentUser?.fullName || 'ORS Administrator')}
-                </div>
-                <span className="hidden sm:inline text-xs font-semibold text-slate-700 dark:text-slate-200">
-                  {currentUser?.fullName || 'ORS Administrator'}
-                </span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-md">
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-xs font-bold leading-none text-slate-800 dark:text-white">
-                      {currentUser?.fullName || 'ORS Administrator'}
-                    </p>
-                    <p className="text-[11px] leading-none text-slate-400 font-mono truncate">
-                      {currentUser?.email || 'admin@mfu.ac.th'}
-                    </p>
-                    <div className="pt-1">
-                      <Badge variant="secondary" className="text-[9px] font-bold bg-[#f0f5ff] text-[#4a7cf6] dark:bg-blue-950 dark:text-blue-300">
-                        {currentUser?.role || 'ADMINISTRATOR'}
-                      </Badge>
-                    </div>
+            {/* Mobile Profile Trigger (hidden on desktop where profile is at bottom left of sidebar) */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-1.5 p-1 rounded-full border border-[#edf1f7] dark:border-[#232c3d] bg-white dark:bg-[#161c26] select-none hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs">
+                  <div className="w-6 h-6 rounded-full bg-[#f0f5ff] text-[#4a7cf6] text-[10px] font-bold flex items-center justify-center">
+                    {getInitials(currentUser?.fullName || 'Admin')}
                   </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={async () => {
-                    await logoutMutation.mutateAsync();
-                    setCurrentUser(null);
-                    showToast('Logged out of Admin Console.', 'info');
-                    router.push(ROUTES.HOME);
-                  }}
-                  className="text-xs gap-2 text-destructive cursor-pointer hover:bg-rose-50"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <ChevronDown className="w-3 h-3 text-slate-400 pr-0.5" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-md">
+                  <DropdownMenuLabel
+                    onClick={openUserDetailModal}
+                    className="font-normal cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md transition-colors"
+                  >
+                    <div className="flex flex-col space-y-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold leading-none text-slate-800 dark:text-white truncate">
+                          {currentUser?.fullName || 'Administrator'}
+                        </p>
+                        <span className="text-[10px] text-primary font-medium hover:underline">Edit</span>
+                      </div>
+                      <p className="text-[11px] leading-none text-slate-400 font-mono truncate">
+                        {currentUser?.email || 'admin@mfu.ac.th'}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={openUserDetailModal}
+                    className="text-xs gap-2 cursor-pointer font-medium"
+                  >
+                    <UserCog className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                    Edit Profile Details
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      await logoutMutation.mutateAsync();
+                      setCurrentUser(null);
+                      showToast('Logged out of Admin Console.', 'info');
+                      router.push(ROUTES.HOME);
+                    }}
+                    className="text-xs gap-2 text-destructive cursor-pointer hover:bg-rose-50"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
 
@@ -1066,9 +1173,9 @@ export function AdminDashboard({
           {/* ================================================================ */}
           {activeSection === 'usage' && (
             <div className="space-y-6">
-              {/* Header Title & Actions */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+              {/* Header Title & Responsive Actions */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="min-w-0">
                   <div className="text-[11px] font-bold tracking-wider uppercase text-[#4a7cf6] dark:text-blue-400 mb-1">
                     Staff Administrator Console
                   </div>
@@ -1080,13 +1187,13 @@ export function AdminDashboard({
                   </p>
                 </div>
 
-                <div className="grid w-full grid-cols-2 gap-2.5 shrink-0 sm:flex sm:w-auto">
+                <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleRefreshAll}
                     disabled={isUsageLoading}
-                    className="h-11 sm:h-7 w-full gap-2 text-xs font-medium rounded-xl bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] text-slate-600 dark:text-slate-300 hover:bg-slate-50 shadow-2xs"
+                    className="h-9 px-3.5 flex-1 sm:flex-initial gap-2 text-xs font-semibold rounded-xl bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs cursor-pointer"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isUsageLoading ? 'animate-spin' : ''}`} />
                     <span>Refresh Data</span>
@@ -1095,7 +1202,7 @@ export function AdminDashboard({
                   <Button
                     onClick={openQrModal}
                     size="sm"
-                    className="h-11 sm:h-7 w-full gap-2 text-xs font-semibold rounded-xl bg-[#4a7cf6] hover:bg-[#3d6fe8] text-white shadow-xs cursor-pointer"
+                    className="h-9 px-3.5 flex-1 sm:flex-initial gap-2 text-xs font-semibold rounded-xl bg-[#4a7cf6] hover:bg-[#3d6fe8] text-white shadow-xs cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
                     <span>Desk QR Stickers</span>
@@ -1212,8 +1319,9 @@ export function AdminDashboard({
                     </p>
                   </div>
 
-                  {/* Interval & Date Range Controls */}
-                  <div className="flex flex-wrap items-center gap-3">
+                  {/* Interval & Interactive Time Period Controls */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Interval Toggle */}
                     <div className="flex items-center bg-[#f4f6fa] dark:bg-slate-800/80 p-1 rounded-xl text-xs font-medium">
                       {(['daily', 'weekly', 'monthly'] as UsageInterval[]).map((iv) => (
                         <button
@@ -1231,11 +1339,58 @@ export function AdminDashboard({
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-slate-500 bg-white dark:bg-slate-900 border border-[#edf1f7] dark:border-slate-700 px-3 py-1.5 rounded-xl font-medium shadow-2xs">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-mono">{startDate}</span>
+                    {/* Quick Time Period Presets Dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#edf1f7] dark:border-[#232c3d] bg-white dark:bg-[#161c26] text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors shadow-2xs cursor-pointer">
+                        <Calendar className="w-3.5 h-3.5 text-[#4a7cf6]" />
+                        <span>Select Period</span>
+                        <ChevronDown className="w-3 h-3 text-slate-400" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg">
+                        <DropdownMenuLabel className="text-[10px] uppercase font-bold text-slate-400">Time Range Presets</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleSelectPreset('7d')} className="text-xs cursor-pointer">
+                          Past 7 Days
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSelectPreset('14d')} className="text-xs cursor-pointer">
+                          Past 14 Days
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSelectPreset('30d')} className="text-xs cursor-pointer">
+                          Past 30 Days (1 Month)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSelectPreset('90d')} className="text-xs cursor-pointer">
+                          Past 90 Days (3 Months)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSelectPreset('year')} className="text-xs cursor-pointer">
+                          Past 1 Year
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSelectPreset('all')} className="text-xs cursor-pointer">
+                          All Time
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* Interactive Custom Date Range Inputs */}
+                    <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-[#161c26] border border-[#edf1f7] dark:border-[#232c3d] px-3 py-1.5 rounded-xl font-medium shadow-2xs">
+                      <label htmlFor="dashboard-start-date" className="sr-only">Start Date</label>
+                      <input
+                        id="dashboard-start-date"
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="bg-transparent font-mono text-xs text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
+                        title="Start Date"
+                      />
                       <span className="text-slate-400 font-normal">to</span>
-                      <span className="font-mono">{endDate}</span>
+                      <label htmlFor="dashboard-end-date" className="sr-only">End Date</label>
+                      <input
+                        id="dashboard-end-date"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="bg-transparent font-mono text-xs text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
+                        title="End Date"
+                      />
                     </div>
                   </div>
                 </div>
@@ -1248,7 +1403,7 @@ export function AdminDashboard({
                       <span>Total Unique Users</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white mt-1">
-                      {usageData?.summary?.totalUsers ?? 15}
+                      {usageData?.summary?.totalUsers ?? 0}
                     </div>
                   </div>
 
@@ -1258,7 +1413,7 @@ export function AdminDashboard({
                       <span>Cumulative Hours</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white mt-1">
-                      {usageData?.summary?.totalUsageHours ? `${usageData.summary.totalUsageHours.toFixed(1)} h` : '70.6 h'}
+                      {usageData?.summary?.totalUsageHours ? `${usageData.summary.totalUsageHours.toFixed(1)} h` : '0.0 h'}
                     </div>
                   </div>
 
@@ -1268,7 +1423,7 @@ export function AdminDashboard({
                       <span>Total Sessions</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white mt-1">
-                      {usageData?.summary?.totalSessions ?? 46}
+                      {usageData?.summary?.totalSessions ?? 0}
                     </div>
                   </div>
 
@@ -1278,7 +1433,7 @@ export function AdminDashboard({
                       <span>Avg Session Time</span>
                     </div>
                     <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 dark:text-white mt-1">
-                      {usageData?.summary?.avgSessionMinutes ?? 92} min
+                      {usageData?.summary?.avgSessionMinutes ?? 0} min
                     </div>
                   </div>
                 </div>
@@ -1296,97 +1451,106 @@ export function AdminDashboard({
                   </div>
 
                   <div className="h-60 w-full pt-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={timelineData}>
-                        <defs>
-                          <linearGradient id="usageGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#4a7cf6" stopOpacity={0.16} />
-                            <stop offset="95%" stopColor="#4a7cf6" stopOpacity={0.0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f6fa" />
-                        <XAxis dataKey="label" stroke="#a0aec0" fontSize={11} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#a0aec0" fontSize={11} tickLine={false} axisLine={false} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#2d3748',
-                            borderRadius: '12px',
-                            border: 'none',
-                            color: '#ffffff',
-                            fontSize: '12px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="hours"
-                          stroke="#4a7cf6"
-                          strokeWidth={2}
-                          fillOpacity={1}
-                          fill="url(#usageGradient)"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    {timelineData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={timelineData}>
+                          <defs>
+                            <linearGradient id="usageGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#4a7cf6" stopOpacity={0.16} />
+                              <stop offset="95%" stopColor="#4a7cf6" stopOpacity={0.0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f4f6fa" />
+                          <XAxis dataKey="label" stroke="#a0aec0" fontSize={11} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#a0aec0" fontSize={11} tickLine={false} axisLine={false} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#2d3748',
+                              borderRadius: '12px',
+                              border: 'none',
+                              color: '#ffffff',
+                              fontSize: '12px',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                            }}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="hours"
+                            stroke="#4a7cf6"
+                            strokeWidth={2}
+                            fillOpacity={1}
+                            fill="url(#usageGradient)"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                        <BarChart3 className="w-7 h-7 mb-1.5 opacity-40 text-slate-400" />
+                        <span>No usage timeline recorded for this period. Select an earlier period above.</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Top Active Students Table */}
-              <div className="rounded-2xl border border-[#edf1f7] dark:border-[#232c3d] bg-white dark:bg-[#161c26] shadow-[0_2px_10px_rgba(0,0,0,0.015)] overflow-hidden">
-                <div className="p-5 border-b border-[#f4f6fa] dark:border-[#232c3d] flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-base text-slate-800 dark:text-white">Top active students</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      Highest total usage hours in the selected period.
-                    </p>
+              {/* Top Active Students Table - only appears when student data comes */}
+              {topStudents.length > 0 && (
+                <div className="rounded-2xl border border-[#edf1f7] dark:border-[#232c3d] bg-white dark:bg-[#161c26] shadow-[0_2px_10px_rgba(0,0,0,0.015)] overflow-hidden">
+                  <div className="p-5 border-b border-[#f4f6fa] dark:border-[#232c3d] flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-base text-slate-800 dark:text-white">Top active students</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Highest total usage hours in the selected period.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] font-semibold border-[#edf1f7] bg-[#fbfcfd] text-slate-500">
+                      Top {topStudents.length} {topStudents.length === 1 ? 'student' : 'students'}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="text-[10px] font-semibold border-[#edf1f7] bg-[#fbfcfd] text-slate-500">
-                    Top 5 students
-                  </Badge>
-                </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="border-b border-[#edf1f7] dark:border-[#232c3d] text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-[#fbfcfd] dark:bg-[#161c26]">
-                      <tr>
-                        <th className="py-3.5 px-6">Student Name</th>
-                        <th className="py-3.5 px-6">Email</th>
-                        <th className="py-3.5 px-6">Sessions</th>
-                        <th className="py-3.5 px-6 text-right">Total Hours ↓</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#f4f6fa] dark:divide-[#232c3d]">
-                      {topStudents.map((st, i) => (
-                        <tr key={i} className="hover:bg-[#fbfcfd] dark:hover:bg-slate-900/30 transition-colors">
-                          <td className="py-3.5 px-6">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#f0f5ff] dark:bg-blue-950/60 text-[#4a7cf6] dark:text-blue-400 text-xs font-bold flex items-center justify-center">
-                                {getInitials(st.studentName)}
-                              </div>
-                              <span className="font-semibold text-slate-800 dark:text-white">{st.studentName}</span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-6 font-mono text-slate-400 text-xs">{st.email}</td>
-                          <td className="py-3.5 px-6 font-semibold text-slate-700 dark:text-slate-200">{st.sessionsCount}</td>
-                          <td className="py-3.5 px-6 text-right">
-                            <div className="inline-flex items-center gap-3 justify-end w-44">
-                              <div className="w-24 h-2 rounded-full bg-[#edf1f7] dark:bg-slate-800 overflow-hidden">
-                                <div
-                                  className="h-full bg-[#4a7cf6] rounded-full"
-                                  style={{ width: `${Math.min(100, (st.totalHours / 8) * 100)}%` }}
-                                />
-                              </div>
-                              <span className="font-mono font-bold text-slate-700 dark:text-white w-12 text-right">
-                                {st.totalHours.toFixed(1)}h
-                              </span>
-                            </div>
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="border-b border-[#edf1f7] dark:border-[#232c3d] text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-[#fbfcfd] dark:bg-[#161c26]">
+                        <tr>
+                          <th className="py-3.5 px-6">Student Name</th>
+                          <th className="py-3.5 px-6">Email</th>
+                          <th className="py-3.5 px-6">Sessions</th>
+                          <th className="py-3.5 px-6 text-right">Total Hours ↓</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-[#f4f6fa] dark:divide-[#232c3d]">
+                        {topStudents.map((st, i) => (
+                          <tr key={i} className="hover:bg-[#fbfcfd] dark:hover:bg-slate-900/30 transition-colors">
+                            <td className="py-3.5 px-6">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-[#f0f5ff] dark:bg-blue-950/60 text-[#4a7cf6] dark:text-blue-400 text-xs font-bold flex items-center justify-center">
+                                  {getInitials(st.studentName)}
+                                </div>
+                                <span className="font-semibold text-slate-800 dark:text-white">{st.studentName}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-6 font-mono text-slate-400 text-xs">{st.email}</td>
+                            <td className="py-3.5 px-6 font-semibold text-slate-700 dark:text-slate-200">{st.sessionsCount}</td>
+                            <td className="py-3.5 px-6 text-right">
+                              <div className="inline-flex items-center gap-3 justify-end w-44">
+                                <div className="w-24 h-2 rounded-full bg-[#edf1f7] dark:bg-slate-800 overflow-hidden">
+                                  <div
+                                    className="h-full bg-[#4a7cf6] rounded-full"
+                                    style={{ width: `${Math.min(100, (st.totalHours / 8) * 100)}%` }}
+                                  />
+                                </div>
+                                <span className="font-mono font-bold text-slate-700 dark:text-white w-12 text-right">
+                                  {st.totalHours.toFixed(1)}h
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

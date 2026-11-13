@@ -9,14 +9,13 @@ import { LabStatsBanner } from './components/lab-stats-banner';
 import { FloorPlan2D } from './components/floor-plan-2d';
 import { SeatDetailDialog } from './components/seat-detail-dialog';
 import { OfflineBanner } from '@/components/offline-banner';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { QrCode } from 'lucide-react';
+import { getInitials } from '@/lib/utils';
 import { Seat } from '@/types';
 
 export default function HomePage() {
   const router = useRouter();
-  const { roomData, backendOnline, loadData, currentUser, openAuthModal } = useApp();
+  const { roomData, backendOnline, loadData, currentUser, openAuthModal, openUserDetailModal } = useApp();
   const { handleConfirmReservation, handleToggleMaintenance } = useActions();
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
 
@@ -35,16 +34,45 @@ export default function HomePage() {
     <div className="space-y-4 sm:space-y-5 pb-8">
       {!backendOnline && <OfflineBanner onRetry={loadData} />}
 
-      {/* Top Header Row: Breadcrumbs & Room Title */}
+      {/* Top Header Row: User Account, Breadcrumbs & Room Title */}
       <div className="space-y-1">
-        {/* Breadcrumb */}
-        <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
-          <span>Spaces</span>
-          <span className="text-muted-foreground/60">&gt;</span>
-          <span>Turing Hall</span>
+        {/* Top Left: User Account & Breadcrumbs */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            {currentUser && (
+              <button
+                type="button"
+                onClick={openUserDetailModal}
+                className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-border/80 bg-background hover:bg-muted/60 transition-colors shadow-2xs group text-left cursor-pointer"
+                title="Click to view and edit user information"
+              >
+                <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-[9px] font-bold flex items-center justify-center">
+                  {getInitials(currentUser.fullName || currentUser.username)}
+                </div>
+                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {currentUser.fullName || currentUser.username}
+                </span>
+                <Badge
+                  variant="secondary"
+                  className="text-[9px] font-bold px-1.5 py-0 h-4 leading-none"
+                >
+                  {currentUser.role}
+                </Badge>
+                <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                  · Edit Details
+                </span>
+              </button>
+            )}
+
+            <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+              <span>Spaces</span>
+              <span className="text-muted-foreground/60">&gt;</span>
+              <span>Turing Hall</span>
+            </div>
+          </div>
         </div>
 
-        {/* Room Title + Status Badge & QR Action Button */}
+        {/* Room Title + Status Badge */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
@@ -62,15 +90,6 @@ export default function HomePage() {
             <span className="text-xs text-muted-foreground font-medium hidden md:inline-block">
               Software Engineering Innovation Lab
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push(ROUTES.CHECKIN)}
-              className="gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg border-border hover:bg-muted/60 cursor-pointer shadow-2xs"
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              Scan desk QR
-            </Button>
           </div>
         </div>
       </div>
