@@ -93,6 +93,10 @@ import {
   UserCog,
   QrCode,
   Download,
+  User as UserIcon,
+  Mail,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
@@ -159,6 +163,17 @@ export function AdminDashboard({
   const [userFormEmail, setUserFormEmail] = useState('');
   const [userFormPassword, setUserFormPassword] = useState('');
   const [userFormRole, setUserFormRole] = useState<UserRole>('STUDENT');
+
+  // --------------------------------------------------------------------------
+  // CURRENT ADMIN ACCOUNT INFORMATION & UPDATE STATE
+  // --------------------------------------------------------------------------
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [accountFullName, setAccountFullName] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountNewPassword, setAccountNewPassword] = useState('');
+  const [accountConfirmPassword, setAccountConfirmPassword] = useState('');
+  const [showAccountPassword, setShowAccountPassword] = useState(false);
+  const [isUpdatingAccount, setIsUpdatingAccount] = useState(false);
 
   // --------------------------------------------------------------------------
   // WORKSPACE & SEAT MANAGEMENT STATE
@@ -346,7 +361,7 @@ export function AdminDashboard({
     e.preventDefault();
     if (!selectedUser) return;
     try {
-      await updateUserMutation.mutateAsync({
+      const updated = await updateUserMutation.mutateAsync({
         id: selectedUser.id,
         payload: {
           fullName: userFormFullName.trim(),
@@ -355,11 +370,107 @@ export function AdminDashboard({
           password: userFormPassword.trim() ? userFormPassword.trim() : undefined,
         },
       });
+      if (currentUser && selectedUser.id === currentUser.id) {
+        setCurrentUser({
+          ...currentUser,
+          ...updated,
+          fullName: updated?.fullName || userFormFullName.trim(),
+          email: updated?.email || userFormEmail.trim(),
+          role: updated?.role || userFormRole,
+          token: currentUser.token,
+        });
+      }
       showToast(`User ${selectedUser.username || selectedUser.id} updated!`, 'success');
       setIsEditUserOpen(false);
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Failed to update user', 'error');
     }
+  };
+
+  // --------------------------------------------------------------------------
+  // ADMIN OWN ACCOUNT VIEW / UPDATE / LOGOUT HANDLERS
+  // --------------------------------------------------------------------------
+  const currentAdminDetails = useMemo(() => {
+    if (!currentUser) return null;
+    const fromList = usersList.find(
+      (u) =>
+        u.id === currentUser.id ||
+        (u.username && currentUser.username && u.username.toLowerCase() === currentUser.username.toLowerCase()),
+    );
+    return fromList ? { ...currentUser, ...fromList, token: currentUser.token } : currentUser;
+  }, [currentUser, usersList]);
+
+  const handleOpenAccountModal = () => {
+    const target = currentAdminDetails || currentUser;
+    setAccountFullName(target?.fullName || 'ORS Administrator');
+    setAccountEmail(target?.email || 'admin@mfu.ac.th');
+    setAccountNewPassword('');
+    setAccountConfirmPassword('');
+    setShowAccountPassword(false);
+    setIsAccountModalOpen(true);
+  };
+
+  const handleUpdateAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accountFullName.trim()) {
+      showToast('Full Name is required.', 'error');
+      return;
+    }
+    if (!accountEmail.trim()) {
+      showToast('Email Address is required.', 'error');
+      return;
+    }
+    if (accountNewPassword.trim()) {
+      if (accountNewPassword.trim().length < 6) {
+        showToast('New password must be at least 6 characters.', 'error');
+        return;
+      }
+      if (accountNewPassword !== accountConfirmPassword) {
+        showToast('New password and confirmation do not match.', 'error');
+        return;
+      }
+    }
+
+    const targetUser = currentAdminDetails || currentUser;
+    if (!targetUser) return;
+
+    setIsUpdatingAccount(true);
+    try {
+      const updated = await updateUserMutation.mutateAsync({
+        id: targetUser.id,
+        payload: {
+          fullName: accountFullName.trim(),
+          email: accountEmail.trim(),
+          role: targetUser.role || 'ADMINISTRATOR',
+          password: accountNewPassword.trim() ? accountNewPassword.trim() : undefined,
+        },
+      });
+
+      setCurrentUser({
+        ...targetUser,
+        ...updated,
+        fullName: updated?.fullName || accountFullName.trim(),
+        email: updated?.email || accountEmail.trim(),
+        token: currentUser?.token,
+      });
+
+      await refetchUsers();
+      showToast('Account information updated successfully!', 'success');
+      setAccountNewPassword('');
+      setAccountConfirmPassword('');
+      setIsAccountModalOpen(false);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to update account information', 'error');
+    } finally {
+      setIsUpdatingAccount(false);
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    await logoutMutation.mutateAsync();
+    setCurrentUser(null);
+    showToast('Logged out of Admin Console.', 'info');
+    router.push(ROUTES.HOME);
   };
 
   const handleDeleteUser = (u: User) => {
@@ -789,7 +900,7 @@ export function AdminDashboard({
       {/* -------------------------------------------------------------------- */}
       {/* 1. LEFT SIDEBAR (Matching media_1793676626285_d7600dd0.jpg)         */}
       {/* -------------------------------------------------------------------- */}
-      <aside className="w-64 shrink-0 bg-white dark:bg-[#161c26] border-r border-[#edf1f7] dark:border-[#232c3d] flex flex-col justify-between select-none shadow-[1px_0_4px_rgba(0,0,0,0.01)]">
+      <aside className="w-64 shrink-0 h-screen sticky top-0 bg-white dark:bg-[#161c26] border-r border-[#edf1f7] dark:border-[#232c3d] flex flex-col justify-between select-none shadow-[1px_0_4px_rgba(0,0,0,0.01)] overflow-y-auto">
         <div>
           {/* Logo Brand Header */}
           <div className="h-16 px-5 border-b border-[#edf1f7] dark:border-[#232c3d] flex items-center gap-2.5">
@@ -940,26 +1051,82 @@ export function AdminDashboard({
           </div>
         </div>
 
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-[#edf1f7] dark:border-[#232c3d] space-y-3">
-          <div className="p-2.5 rounded-xl bg-[#fbfcfd] dark:bg-slate-900/40 border border-[#edf1f7] dark:border-[#232c3d] flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[#f0f5ff] dark:bg-blue-950/60 text-[#4a7cf6] dark:text-blue-400 flex items-center justify-center shrink-0">
-              <Layers className="w-3.5 h-3.5" />
+        {/* Lower Navbar / Sidebar Footer: Lab Info + User Account & Logout */}
+        <div className="p-3.5 border-t border-[#edf1f7] dark:border-[#232c3d] space-y-2.5 bg-[#fcfdfe] dark:bg-[#131923]">
+          {/* Lab Room Indicator */}
+          <div className="px-2.5 py-2 rounded-xl bg-white dark:bg-slate-900/50 border border-[#edf1f7] dark:border-[#232c3d] flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-6 h-6 rounded-lg bg-[#f0f5ff] dark:bg-blue-950/60 text-[#4a7cf6] dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Layers className="w-3.5 h-3.5" />
+              </div>
+              <div className="leading-tight truncate">
+                <div className="text-[11px] font-semibold text-slate-800 dark:text-white truncate">SE Lab</div>
+                <div className="text-[9px] text-slate-400 font-mono">SE-LAB-101</div>
+              </div>
             </div>
-            <div className="leading-tight">
-              <div className="text-xs font-semibold text-slate-800 dark:text-white">Turing Hall 101</div>
-              <div className="text-[10px] text-slate-400 font-mono">SE-LAB-101</div>
-            </div>
+            <button
+              type="button"
+              onClick={() => showToast('ORS Lab Administrator Portal v2.4. Open 08:00 - 22:00.', 'info')}
+              title="Help & support"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => showToast('ORS Lab Administrator Portal v2.4. Open 08:00 - 22:00.', 'info')}
-            className="w-full flex items-center gap-2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer px-1"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>Help &amp; support</span>
-          </button>
+          {/* User Account & Logout Card in Lower Navbar */}
+          <div className="p-2.5 rounded-xl bg-white dark:bg-[#161c26] border border-[#edf1f7] dark:border-[#232c3d] shadow-2xs space-y-2.5">
+            <button
+              type="button"
+              onClick={handleOpenAccountModal}
+              title="Click to view and update account information"
+              className="w-full flex items-center gap-2.5 text-left group cursor-pointer rounded-lg p-1 -m-1 hover:bg-[#f8fafc] dark:hover:bg-slate-800/50 transition-colors"
+            >
+              <div className="relative shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-[#f0f5ff] dark:bg-blue-950/80 text-[#4a7cf6] dark:text-blue-400 text-xs font-extrabold flex items-center justify-center border border-blue-200/60 dark:border-blue-800/50 shadow-2xs">
+                  {getInitials(currentAdminDetails?.fullName || currentAdminDetails?.username || 'ORS Admin')}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#161c26]" />
+              </div>
+
+              <div className="flex-1 min-w-0 leading-tight">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-bold text-slate-800 dark:text-white truncate group-hover:text-[#4a7cf6] dark:group-hover:text-blue-400 transition-colors">
+                    {currentAdminDetails?.fullName || 'Account'}
+                  </span>
+                  <Edit className="w-3 h-3 text-slate-400 group-hover:text-[#4a7cf6] shrink-0 transition-colors" />
+                </div>
+                {/* <div className="text-[10px] text-slate-400 font-mono truncate mt-0.5">
+                  {currentAdminDetails?.email || `@${currentAdminDetails?.username || 'admin'}`}
+                </div> */}
+                {/* <div className="mt-1 flex items-center gap-1.5">
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#f0f5ff] text-[#4a7cf6] dark:bg-blue-950/80 dark:text-blue-300">
+                    {currentAdminDetails?.role === 'ROLE_ADMIN' ? 'ADMINISTRATOR' : currentAdminDetails?.role || 'ADMINISTRATOR'}
+                  </span>
+                </div> */}
+              </div>
+            </button>
+
+            <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-[#f4f6fa] dark:border-[#232c3d]">
+              <button
+                type="button"
+                onClick={handleOpenAccountModal}
+                className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-slate-200 bg-[#f8fafc] dark:bg-slate-800/70 hover:bg-[#f0f5ff] hover:text-[#4070d8] dark:hover:bg-blue-950/50 dark:hover:text-blue-300 border border-[#edf1f7] dark:border-slate-700/80 transition-colors cursor-pointer"
+              >
+                <UserIcon className="w-3.5 h-3.5" />
+                <span>Account</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleAdminLogout}
+                className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/30 hover:bg-rose-100/80 dark:hover:bg-rose-950/60 border border-rose-200/60 dark:border-rose-900/50 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </button>
+            </div>
+          </div>
         </div>
       </aside>
 
@@ -1019,12 +1186,15 @@ export function AdminDashboard({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={async () => {
-                    await logoutMutation.mutateAsync();
-                    setCurrentUser(null);
-                    showToast('Logged out of Admin Console.', 'info');
-                    router.push(ROUTES.HOME);
-                  }}
+                  onClick={handleOpenAccountModal}
+                  className="text-xs gap-2 cursor-pointer"
+                >
+                  <UserIcon className="w-3.5 h-3.5" />
+                  Account Information
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleAdminLogout}
                   className="text-xs gap-2 text-destructive cursor-pointer hover:bg-rose-50"
                 >
                   <LogOut className="w-3.5 h-3.5" />
@@ -3284,6 +3454,195 @@ export function AdminDashboard({
               {isDeleting ? 'Deleting...' : 'Yes, Delete'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* -------------------------------------------------------------------- */}
+      {/* MODAL 8: ADMIN ACCOUNT INFORMATION & UPDATE MODAL                    */}
+      {/* -------------------------------------------------------------------- */}
+      <Dialog open={isAccountModalOpen} onOpenChange={setIsAccountModalOpen}>
+        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-2xl bg-white dark:bg-[#161c26] border border-[#edf1f7] dark:border-[#232c3d] shadow-xl">
+          {/* Top Profile Banner Header */}
+          <div className="p-6 pb-5 bg-gradient-to-br from-[#f0f5ff] via-white to-[#f8fafc] dark:from-blue-950/40 dark:via-[#161c26] dark:to-[#131923] border-b border-[#edf1f7] dark:border-[#232c3d]">
+            <DialogHeader className="text-left">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="relative">
+                    <div className="w-13 h-13 rounded-2xl bg-[#4a7cf6] text-white text-base font-extrabold flex items-center justify-center shadow-sm shadow-[#4a7cf6]/25">
+                      {getInitials(currentAdminDetails?.fullName || currentAdminDetails?.username || 'ORS Admin')}
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#161c26]" />
+                  </div>
+                  <div className="space-y-1">
+                    <DialogTitle className="text-base font-extrabold text-slate-900 dark:text-white leading-none">
+                      {currentAdminDetails?.fullName || 'ORS Administrator'}
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                      @{currentAdminDetails?.username || 'admin'} · ID #{currentAdminDetails?.id || 1}
+                    </DialogDescription>
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <Badge
+                        variant="secondary"
+                        className="text-[10px] font-bold bg-[#f0f5ff] text-[#4a7cf6] dark:bg-blue-950 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/50"
+                      >
+                        {currentAdminDetails?.role === 'ROLE_ADMIN'
+                          ? 'ADMINISTRATOR'
+                          : currentAdminDetails?.role || 'ADMINISTRATOR'}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-bold border-emerald-200 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50"
+                      >
+                        ACTIVE
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </DialogHeader>
+
+            {/* Read-only Account Summary Pills */}
+            <div className="grid grid-cols-2 gap-2.5 mt-4 pt-3.5 border-t border-[#edf1f7]/80 dark:border-[#232c3d]">
+              <div className="px-3 py-2 rounded-xl bg-white/90 dark:bg-slate-900/60 border border-[#edf1f7] dark:border-[#232c3d]">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Staff Login ID</div>
+                <div className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 mt-0.5 truncate">
+                  {currentAdminDetails?.username || 'admin'}
+                </div>
+              </div>
+              <div className="px-3 py-2 rounded-xl bg-white/90 dark:bg-slate-900/60 border border-[#edf1f7] dark:border-[#232c3d]">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Facility</div>
+                <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 truncate">
+                  SE Lab
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Update Account Information Form */}
+          <form onSubmit={handleUpdateAccountSubmit} className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                Update Account Information
+              </h3>
+              <span className="text-[11px] text-slate-400">Changes apply immediately</span>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-account-fullname" className="text-xs font-semibold">
+                Full Name *
+              </Label>
+              <div className="relative">
+                <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Input
+                  id="admin-account-fullname"
+                  value={accountFullName}
+                  onChange={(e) => setAccountFullName(e.target.value)}
+                  placeholder="Enter your full name"
+                  className="pl-9 text-xs py-5"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="admin-account-email" className="text-xs font-semibold">
+                Email Address *
+              </Label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Input
+                  id="admin-account-email"
+                  type="email"
+                  value={accountEmail}
+                  onChange={(e) => setAccountEmail(e.target.value)}
+                  placeholder="admin@mfu.ac.th"
+                  className="pl-9 text-xs py-5"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1.5">
+                <Label htmlFor="admin-account-password" className="text-xs font-semibold">
+                  New Password <span className="text-[10px] font-normal text-slate-400">(Optional)</span>
+                </Label>
+                <div className="relative">
+                  <KeyRound className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Input
+                    id="admin-account-password"
+                    type={showAccountPassword ? 'text' : 'password'}
+                    value={accountNewPassword}
+                    onChange={(e) => setAccountNewPassword(e.target.value)}
+                    placeholder="Passowrd"
+                    className="pl-8 pr-8 text-xs font-mono py-5"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAccountPassword((prev) => !prev)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    aria-label={showAccountPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showAccountPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="admin-account-confirm-password" className="text-xs font-semibold">
+                  Confirm Password
+                </Label>
+                <Input
+                  id="admin-account-confirm-password"
+                  type={showAccountPassword ? 'text' : 'password'}
+                  value={accountConfirmPassword}
+                  onChange={(e) => setAccountConfirmPassword(e.target.value)}
+                  placeholder="Repeat new password"
+                  disabled={!accountNewPassword}
+                  className="text-xs font-mono py-5"
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4 border-t border-[#edf1f7] dark:border-[#232c3d] flex flex-row items-center justify-between sm:justify-between w-full gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsAccountModalOpen(false);
+                  void handleAdminLogout();
+                }}
+                className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 gap-1.5 px-3 h-9 rounded-xl cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAccountModalOpen(false)}
+                  disabled={isUpdatingAccount}
+                  className="text-xs h-9 px-3.5 rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isUpdatingAccount}
+                  className="text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20 h-9 px-4 cursor-pointer"
+                >
+                  {isUpdatingAccount ? 'Saving...' : 'Update Information'}
+                </Button>
+              </div>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

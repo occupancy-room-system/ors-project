@@ -39,10 +39,8 @@ public class HealthController {
         long totalSeats = seatRepository.count();
 
         HealthResponse health = new HealthResponse(
-                "ORS Server (Spring Boot Backend)",
-                "UP",
-                "Spring Boot 3 / Java 21",
-                3307,
+                "ORS Server",
+                "OK",
                 dbConnected,
                 activeSessions,
                 totalSeats

@@ -70,6 +70,7 @@ export function AuthModal() {
       closeAuthModal();
 
       if (user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN') {
+        console.log("admin user ", user);
         router.push(ROUTES.ADMIN);
       }
     } catch (err: unknown) {
