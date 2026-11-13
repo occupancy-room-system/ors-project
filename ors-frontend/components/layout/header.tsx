@@ -23,14 +23,13 @@ import {
   User as UserIcon,
   ChevronDown,
   HelpCircle,
-  QrCode,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, setCurrentUser, openAuthModal, activeSession, pendingReservationCount, showToast } = useApp();
+  const { currentUser, setCurrentUser, openAuthModal, openUserDetailModal, activeSession, pendingReservationCount, showToast } = useApp();
   const logoutMutation = useLogoutMutation();
   const [mounted, setMounted] = useState(false);
 
@@ -155,13 +154,17 @@ export function Header() {
                 <ChevronDown className="hidden sm:block w-3 h-3 text-muted-foreground ml-0.5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="font-normal">
+                <DropdownMenuLabel
+                  onClick={() => openUserDetailModal()}
+                  className="font-normal cursor-pointer hover:bg-muted/50 rounded-md transition-colors"
+                  title="Click to view and edit user details"
+                >
                   <div className="flex flex-col space-y-1">
                     <p className="text-xs font-bold leading-none text-foreground">{currentUser.fullName}</p>
                     <p className="text-[11px] leading-none text-muted-foreground font-mono truncate">
                       {currentUser.email || `${currentUser.username}@lamduan.mfu.ac.th`}
                     </p>
-                    <div className="pt-1">
+                    <div className="pt-1 flex items-center justify-between">
                       <Badge
                         variant="secondary"
                         className={`text-[9px] font-bold ${currentUser.role === 'ADMINISTRATOR'
@@ -171,17 +174,14 @@ export function Header() {
                       >
                         {currentUser.role}
                       </Badge>
+                      <span className="text-[10px] text-primary font-medium hover:underline">Edit Info</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push(ROUTES.CHECKIN)} className="text-xs gap-2 cursor-pointer">
-                  <QrCode className="w-3.5 h-3.5" />
-                  Scan Desk QR
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => openAuthModal('student')} className="text-xs gap-2 cursor-pointer">
+                <DropdownMenuItem onClick={() => openUserDetailModal()} className="text-xs gap-2 cursor-pointer font-medium">
                   <UserIcon className="w-3.5 h-3.5" />
-                  Switch Profile
+                  User Information
                 </DropdownMenuItem>
                 {currentUser.role === 'ADMINISTRATOR' && (
                   <DropdownMenuItem onClick={() => router.push(ROUTES.ADMIN)} className="text-xs gap-2 cursor-pointer">

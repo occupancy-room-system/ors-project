@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { AuthModal } from '@/components/auth/auth-modal';
+import { UserDetailModal } from '@/components/auth/user-detail-modal';
 import { useApp } from '@/hooks/use-app-store';
 import { ROUTES } from '@/config/routes';
 
@@ -33,11 +34,12 @@ export default function RootGroupLayout({ children }: { children: React.ReactNod
 
   if (isAdminRoute) {
     return (
-      <div className="min-h-screen w-full bg-white dark:bg-[#0f141c] font-sans">
-        <main className="w-full min-h-screen">
+      <div className="min-h-screen md:h-screen md:overflow-hidden w-full bg-white dark:bg-[#0f141c] font-sans">
+        <main className="w-full h-full">
           {children}
         </main>
         <AuthModal />
+        <UserDetailModal />
       </div>
     );
   }
@@ -51,6 +53,7 @@ export default function RootGroupLayout({ children }: { children: React.ReactNod
       <Footer />
       <MobileNav />
       <AuthModal />
+      <UserDetailModal />
     </div>
   );
 }
