@@ -59,7 +59,7 @@ Fast polling summary designed for high-frequency dashboard refresh without trans
 - **Request**:
 ```json
 {
-  "email": "alex.chen@student.university.edu",
+  "email": "alex.chen@lamduan.mfu.ac.th",
   "password": "StudentPass123!"
 }
 ```
@@ -70,7 +70,7 @@ Fast polling summary designed for high-frequency dashboard refresh without trans
 ```json
 {
   "fullName": "Jane Doe",
-  "email": "jane.doe@student.university.edu",
+  "email": "jane.doe@lamduan.mfu.ac.th",
   "password": "StudentPass123!"
 }
 ```

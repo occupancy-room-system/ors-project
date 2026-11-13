@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { ROUTES } from '@/config/routes';
 import { useApp } from '@/hooks/use-app-store';
@@ -24,14 +23,13 @@ import {
   User as UserIcon,
   ChevronDown,
   HelpCircle,
-  QrCode,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, setCurrentUser, openAuthModal, activeSession, pendingReservationCount, showToast } = useApp();
+  const { currentUser, setCurrentUser, openAuthModal, openUserDetailModal, activeSession, pendingReservationCount, showToast } = useApp();
   const logoutMutation = useLogoutMutation();
   const [mounted, setMounted] = useState(false);
 
@@ -49,7 +47,6 @@ export function Header() {
   const isOverview = pathname === ROUTES.HOME;
   const isReservations = pathname === ROUTES.CHECKIN || pathname.startsWith('/checkin');
   const isSession = pathname === ROUTES.SESSION || pathname.startsWith('/session');
-  const isAdmin = pathname === ROUTES.ADMIN || pathname.startsWith('/admin');
 
   // Compute user initials (e.g. "Alex Kim" -> "AK")
   const getInitials = (name?: string) => {
@@ -61,16 +58,17 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand + Navigation Tabs */}
-        <div className="flex items-center gap-8">
+        <div className="flex min-w-0 items-center gap-8">
           {/* Brand */}
           <Link href={ROUTES.HOME} className="flex items-center gap-2.5 group focus:outline-none shrink-0">
             <div className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-center text-primary transition-transform group-hover:scale-105 shadow-2xs">
               <LayoutGrid className="w-4 h-4" />
             </div>
             <span className="text-sm sm:text-base font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
-              SE Lab Occupancy
+              <span className="sm:hidden">SE Lab</span>
+              <span className="hidden sm:inline">SE Lab Occupancy</span>
             </span>
           </Link>
 
@@ -129,11 +127,11 @@ export function Header() {
         </div>
 
         {/* Right: Help icon + User Pill / Sign In */}
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
-            className="w-8 h-8 rounded-full text-muted-foreground hover:text-foreground"
+            className="hidden min-[375px]:inline-flex w-10 h-10 sm:w-8 sm:h-8 rounded-full text-muted-foreground hover:text-foreground"
             onClick={() => showToast('Software Engineering Innovation Lab · SE Lab . Open until 22:00.', 'info')}
             title="Help & Lab Information"
           >
@@ -146,23 +144,27 @@ export function Header() {
             <div className="h-8 w-24 rounded-full bg-muted/50 animate-pulse" />
           ) : currentUser ? (
             <DropdownMenu>
-              <DropdownMenuTrigger className="inline-flex items-center gap-2 pl-1 pr-2.5 py-1 text-xs font-semibold rounded-full border border-border/80 bg-background hover:bg-muted/50 transition-colors cursor-pointer">
-                <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-[10px] font-bold flex items-center justify-center">
+              <DropdownMenuTrigger className="inline-flex h-10 w-10 items-center justify-center gap-2 rounded-full border border-border/80 bg-background text-xs font-semibold hover:bg-muted/50 transition-colors cursor-pointer sm:h-auto sm:w-auto sm:justify-start sm:pl-1 sm:pr-2.5 sm:py-1">
+                <div className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-[10px] font-bold flex items-center justify-center">
                   {getInitials(currentUser.fullName || currentUser.username)}
                 </div>
-                <span className="max-w-[110px] truncate text-foreground font-medium">
+                <span className="hidden sm:inline max-w-[110px] truncate text-foreground font-medium">
                   {currentUser.fullName || currentUser.username}
                 </span>
-                <ChevronDown className="w-3 h-3 text-muted-foreground ml-0.5" />
+                <ChevronDown className="hidden sm:block w-3 h-3 text-muted-foreground ml-0.5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="font-normal">
+                <DropdownMenuLabel
+                  onClick={() => openUserDetailModal()}
+                  className="font-normal cursor-pointer hover:bg-muted/50 rounded-md transition-colors"
+                  title="Click to view and edit user details"
+                >
                   <div className="flex flex-col space-y-1">
                     <p className="text-xs font-bold leading-none text-foreground">{currentUser.fullName}</p>
                     <p className="text-[11px] leading-none text-muted-foreground font-mono truncate">
-                      {currentUser.email || `${currentUser.username}@student.university.edu`}
+                      {currentUser.email || `${currentUser.username}@lamduan.mfu.ac.th`}
                     </p>
-                    <div className="pt-1">
+                    <div className="pt-1 flex items-center justify-between">
                       <Badge
                         variant="secondary"
                         className={`text-[9px] font-bold ${currentUser.role === 'ADMINISTRATOR'
@@ -172,17 +174,14 @@ export function Header() {
                       >
                         {currentUser.role}
                       </Badge>
+                      <span className="text-[10px] text-primary font-medium hover:underline">Edit Info</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push(ROUTES.CHECKIN)} className="text-xs gap-2 cursor-pointer">
-                  <QrCode className="w-3.5 h-3.5" />
-                  Scan Desk QR
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => openAuthModal('student')} className="text-xs gap-2 cursor-pointer">
+                <DropdownMenuItem onClick={() => openUserDetailModal()} className="text-xs gap-2 cursor-pointer font-medium">
                   <UserIcon className="w-3.5 h-3.5" />
-                  Switch Profile
+                  User Information
                 </DropdownMenuItem>
                 {currentUser.role === 'ADMINISTRATOR' && (
                   <DropdownMenuItem onClick={() => router.push(ROUTES.ADMIN)} className="text-xs gap-2 cursor-pointer">
@@ -201,7 +200,7 @@ export function Header() {
             <Button
               onClick={() => openAuthModal('student')}
               size="sm"
-              className="h-8 px-4 text-xs font-bold shadow-xs cursor-pointer rounded-lg"
+              className="h-10 sm:h-8 px-3 sm:px-4 text-xs font-bold shadow-xs cursor-pointer rounded-lg"
             >
               Sign In
             </Button>

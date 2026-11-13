@@ -473,7 +473,7 @@ export function QrCheckIn({
       {/* 3. Stepper Bar */}
       <div className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card p-4 sm:px-6 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {/* Steps */}
-        <div className="flex items-center gap-2.5 sm:gap-4 text-xs font-medium">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 text-xs font-medium">
           {/* Step 1: Reservation */}
           <div className="flex items-center gap-2">
             {activeReservation ? (
@@ -490,7 +490,7 @@ export function QrCheckIn({
             </span>
           </div>
 
-          <div className="w-8 sm:w-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
+          <div className="w-5 sm:w-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
 
           {/* Step 2: Check in */}
           <div className="flex items-center gap-2">
@@ -508,7 +508,7 @@ export function QrCheckIn({
             </span>
           </div>
 
-          <div className="w-8 sm:w-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
+          <div className="w-5 sm:w-12 h-[1px] bg-slate-200 dark:bg-slate-700" />
 
           {/* Step 3: Active session */}
           <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
@@ -545,7 +545,7 @@ export function QrCheckIn({
       {/* 4. Two Columns Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Your Reservation Card (5 cols) */}
-        <div className="lg:col-span-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card shadow-2xs p-6 space-y-6">
+        <div className="lg:col-span-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card shadow-2xs p-4 sm:p-6 space-y-6">
           {/* Card Header */}
           <div className="flex items-center justify-between pb-1">
             <span className="text-sm font-bold text-foreground">Your reservation</span>
@@ -660,9 +660,9 @@ export function QrCheckIn({
         </div>
 
         {/* Right Column: Check In At Your Desk (7 cols) */}
-        <div className="lg:col-span-7 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card shadow-2xs p-6 space-y-5">
+        <div className="lg:col-span-7 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-card shadow-2xs p-4 sm:p-6 space-y-5">
           {/* Card Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 text-sm font-bold text-foreground">
               <Scan className="w-4 h-4 text-primary" />
               <span>Check in at your desk</span>

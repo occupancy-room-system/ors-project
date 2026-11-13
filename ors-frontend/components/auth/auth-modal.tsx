@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/hooks/use-app-store';
 import { useLoginMutation, useRegisterMutation } from '@/hooks/use-auth-query';
@@ -19,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GraduationCap, Lock, User, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
 
 export function AuthModal() {
-  const { isAuthModalOpen, closeAuthModal, setCurrentUser, showToast } = useApp();
+  const { isAuthModalOpen, authModalPortal, closeAuthModal, setCurrentUser, showToast } = useApp();
   const router = useRouter();
   const loginMutation = useLoginMutation();
   const registerMutation = useRegisterMutation();
@@ -38,14 +38,14 @@ export function AuthModal() {
   const [showRegPassword, setShowRegPassword] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const isAdminPortal = authModalPortal === 'admin';
 
-  useEffect(() => {
-    if (isAuthModalOpen) {
-      setErrorMsg(null);
-      setLoginPassword('');
-      setRegPassword('');
-    }
-  }, [isAuthModalOpen]);
+  const handleClose = () => {
+    setErrorMsg(null);
+    setLoginPassword('');
+    setRegPassword('');
+    closeAuthModal();
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,12 +65,21 @@ export function AuthModal() {
         password: loginPassword,
       });
 
+      const isAdmin = user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN';
+      if (isAdminPortal && !isAdmin) {
+        setErrorMsg('This account does not have administrator access.');
+        return;
+      }
+      if (!isAdminPortal && isAdmin) {
+        setErrorMsg('Administrator accounts must sign in from the /admin page.');
+        return;
+      }
+
       setCurrentUser(user);
       showToast(`Welcome back, ${user.fullName || user.username}!`, 'success');
-      closeAuthModal();
+      handleClose();
 
-      if (user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN') {
-        console.log("admin user ", user);
+      if (isAdmin) {
         router.push(ROUTES.ADMIN);
       }
     } catch (err: unknown) {
@@ -113,7 +122,7 @@ export function AuthModal() {
         });
         setCurrentUser(user);
         showToast(`Account created! Welcome, ${user.fullName || user.username}!`, 'success');
-        closeAuthModal();
+        handleClose();
       } catch {
         showToast('Account registered successfully! Please sign in.', 'success');
         setLoginStudentId(regStudentId.trim());
@@ -127,10 +136,10 @@ export function AuthModal() {
   const isPending = loginMutation.isPending || registerMutation.isPending;
 
   return (
-    <Dialog open={isAuthModalOpen} onOpenChange={(open) => !open && closeAuthModal()}>
+    <Dialog open={isAuthModalOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[420px] p-0 overflow-hidden border-border bg-card">
         {/* Header */}
-        <DialogHeader className="p-6 pb-4 border-b border-border/60 bg-muted/20">
+        <DialogHeader className="p-4 sm:p-6 sm:pb-4 pb-4 border-b border-border/60 bg-muted/20">
           <div className="flex items-center gap-2.5 mb-2">
             <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground font-black text-xs flex items-center justify-center shadow-xs">
               SE
@@ -142,11 +151,13 @@ export function AuthModal() {
             </div>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Sign in with your Student ID to reserve desks and track lab sessions.
+            {isAdminPortal
+              ? 'Sign in with an administrator account to access the lab console.'
+              : 'Sign in with your Student ID to reserve desks and track lab sessions.'}
           </DialogDescription>
 
           {/* Mode Switch Tabs */}
-          <div className="pt-3">
+          {!isAdminPortal && <div className="pt-3">
             <Tabs
               value={activeTab}
               onValueChange={(val) => {
@@ -155,7 +166,7 @@ export function AuthModal() {
               }}
               className="w-full"
             >
-              <TabsList className="grid grid-cols-2 w-full h-9 p-0.5 bg-muted rounded-lg">
+              <TabsList className="grid grid-cols-2 w-full h-11 sm:h-9 p-0.5 bg-muted rounded-lg">
                 <TabsTrigger
                   value="login"
                   className="text-xs font-semibold data-[state=active]:bg-background cursor-pointer"
@@ -170,30 +181,30 @@ export function AuthModal() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          </div>
+          </div>}
         </DialogHeader>
 
         {/* Form Body */}
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 space-y-4">
           {errorMsg && (
             <div className="p-3 text-xs rounded-xl border border-destructive/20 bg-destructive/10 text-destructive font-medium">
               {errorMsg}
             </div>
           )}
 
-          {activeTab === 'login' ? (
+          {isAdminPortal || activeTab === 'login' ? (
             /* Sign In Form: ONLY studentId and password */
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="modal-login-studentId" className="text-xs font-semibold">
-                  Student ID or Username
+                  {isAdminPortal ? 'Administrator ID' : 'Student ID'}
                 </Label>
                 <div className="relative">
                   <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                   <Input
                     id="modal-login-studentId"
                     type="text"
-                    placeholder="e.g. 6531501001 or admin"
+                    placeholder={isAdminPortal ? 'Administrator ID' : 'Student ID'}
                     value={loginStudentId}
                     onChange={(e) => setLoginStudentId(e.target.value)}
                     className="pl-9 text-xs font-mono"
@@ -223,7 +234,7 @@ export function AuthModal() {
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword(!showLoginPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
                     aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
                   >
                     {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -233,7 +244,7 @@ export function AuthModal() {
 
               <Button
                 type="submit"
-                className="w-full text-xs font-bold gap-2 h-10 mt-2 cursor-pointer"
+                className="w-full text-xs font-bold gap-2 h-11 mt-2 cursor-pointer"
                 disabled={isPending}
               >
                 {loginMutation.isPending ? (
@@ -249,7 +260,7 @@ export function AuthModal() {
                 )}
               </Button>
 
-              <div className="text-center text-xs text-muted-foreground pt-1">
+              {!isAdminPortal && <div className="text-center text-xs text-muted-foreground pt-1">
                 Don&apos;t have an account?{' '}
                 <button
                   type="button"
@@ -261,7 +272,7 @@ export function AuthModal() {
                 >
                   Register here
                 </button>
-              </div>
+              </div>}
             </form>
           ) : (
             /* Register Form: ONLY studentId, fullName, and password */
@@ -324,7 +335,7 @@ export function AuthModal() {
                   <button
                     type="button"
                     onClick={() => setShowRegPassword(!showRegPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
                     aria-label={showRegPassword ? 'Hide password' : 'Show password'}
                   >
                     {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -334,7 +345,7 @@ export function AuthModal() {
 
               <Button
                 type="submit"
-                className="w-full text-xs font-bold gap-2 h-10 mt-2 cursor-pointer"
+                className="w-full text-xs font-bold gap-2 h-11 mt-2 cursor-pointer"
                 disabled={isPending}
               >
                 {registerMutation.isPending ? (

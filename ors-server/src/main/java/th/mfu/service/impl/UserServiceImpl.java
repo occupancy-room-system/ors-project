@@ -82,7 +82,7 @@ public class UserServiceImpl implements UserService {
 
         String email = request.getEmail();
         if (email == null || email.trim().isEmpty()) {
-            email = cleanUsername.toLowerCase() + "@student.university.edu";
+            email = cleanUsername.toLowerCase() + "@lamduan.mfu.ac.th";
         }
         String cleanEmail = email.trim().toLowerCase();
         if (userRepository.existsByEmail(cleanEmail)) {

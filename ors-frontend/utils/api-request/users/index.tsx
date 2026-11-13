@@ -30,7 +30,7 @@ export const usersApi = {
       studentId: payload.studentId.trim(),
       username: payload.studentId.trim(),
       fullName: payload.fullName.trim(),
-      email: payload.email?.trim() || `${payload.studentId.trim().toLowerCase()}@student.university.edu`,
+      email: payload.email?.trim() || `${payload.studentId.trim().toLowerCase()}@lamduan.mfu.ac.th`,
       password: payload.password || 'StudentPass123!',
       role: payload.role,
     });
@@ -44,4 +44,3 @@ export const usersApi = {
     await api.delete(`/api/users/${id}`);
   },
 };
-

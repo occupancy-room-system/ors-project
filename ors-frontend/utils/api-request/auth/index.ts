@@ -67,7 +67,7 @@ export const authApi = {
       username: studentId,
       fullName: payload.fullName.trim(),
       password: payload.password,
-      email: payload.email || `${studentId}@student.university.edu`,
+      email: payload.email || `${studentId}@lamduan.mfu.ac.th`,
     });
 
     return {
@@ -116,4 +116,3 @@ export const authApi = {
     }
   },
 };
-

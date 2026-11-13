@@ -180,6 +180,12 @@ export function FloorPlan2D({
     return false;
   };
 
+  const isWorkspaceInactive = (type: 'INDIVIDUAL' | 'GROUP') =>
+    filterMode !== 'ALL' && filterMode !== type;
+
+  const workspaceOpacity = (type: 'INDIVIDUAL' | 'GROUP') =>
+    isWorkspaceInactive(type) ? 'opacity-30' : 'opacity-100';
+
   // Reusable Desk Component
   const DeskItem = ({
     seat: providedSeat,
@@ -216,6 +222,9 @@ export function FloorPlan2D({
     const label = displayLabel || getDisplayLabel(seat);
     const isSelected = selectedSeat?.seatCode === seat.seatCode || (selectedSeat && selectedSeat.id === seat.id && seat.id !== 0);
     const dimmed = isDeskDimmed(seat, label);
+    const workspaceDisabled =
+      (filterMode === 'INDIVIDUAL' && (tableType ?? seat.tableType) === 'GROUP') ||
+      (filterMode === 'GROUP' && (tableType ?? seat.tableType) === 'INDIVIDUAL');
 
     // Compute status appearance matching screenshot
     let bgBorder = 'bg-white dark:bg-card border-slate-200 dark:border-slate-800 text-foreground hover:border-slate-400';
@@ -254,7 +263,8 @@ export function FloorPlan2D({
       <button
         type="button"
         onClick={() => onSelectSeat(seat)}
-        className={`rounded-lg border px-2 py-1.5 flex items-center justify-between gap-1.5 transition-all cursor-pointer shadow-3xs select-none min-w-[64px] ${bgBorder} ${
+        disabled={workspaceDisabled}
+        className={`rounded-lg border px-2 py-1.5 flex items-center justify-between gap-1.5 transition-all shadow-3xs select-none min-w-[64px] ${workspaceDisabled ? 'cursor-not-allowed' : 'cursor-pointer'} ${bgBorder} ${
           dimmed ? 'opacity-25 grayscale-[0.6]' : 'opacity-100'
         } ${customClass}`}
         title={`${seat.seatCode} - ${seat.status}`}
@@ -266,7 +276,7 @@ export function FloorPlan2D({
   };
 
   return (
-    <div className="bg-card rounded-2xl border border-border/80 shadow-xs p-5 sm:p-6 space-y-4">
+    <div className="bg-card rounded-2xl border border-border/80 shadow-xs p-4 sm:p-6 space-y-4">
       {/* 1. Header Row: Title & View Segmented Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
@@ -280,39 +290,39 @@ export function FloorPlan2D({
         </div>
 
         {/* View Switcher: All workspaces | Individual desks | Group tables */}
-        <div className="flex items-center p-1 bg-muted/60 rounded-xl border border-border/60 self-start sm:self-auto">
+        <div className="grid w-full grid-cols-3 items-center p-1 bg-muted/60 rounded-xl border border-border/60 sm:flex sm:w-auto self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setFilterMode("ALL")}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`min-h-11 sm:min-h-9 px-2 sm:px-3 py-1 text-center rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
               filterMode === "ALL"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            All workspaces
+            <span className="sm:hidden">All</span><span className="hidden sm:inline">All workspaces</span>
           </button>
           <button
             type="button"
             onClick={() => setFilterMode("INDIVIDUAL")}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`min-h-11 sm:min-h-9 px-2 sm:px-3 py-1 text-center rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
               filterMode === "INDIVIDUAL"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Individual desks
+            <span className="sm:hidden">Desks</span><span className="hidden sm:inline">Individual desks</span>
           </button>
           <button
             type="button"
             onClick={() => setFilterMode("GROUP")}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`min-h-11 sm:min-h-9 px-2 sm:px-3 py-1 text-center rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
               filterMode === "GROUP"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Group tables
+            <span className="sm:hidden">Tables</span><span className="hidden sm:inline">Group tables</span>
           </button>
         </div>
       </div>
@@ -320,10 +330,10 @@ export function FloorPlan2D({
       {/* 2. Controls & Legend Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-1">
         {/* Left: Filter dropdown + Search input */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex w-full items-center gap-2.5 flex-wrap lg:w-auto">
           {/* Status filter dropdown using Shadcn DropdownMenu */}
           <DropdownMenu>
-            <DropdownMenuTrigger className="h-8 px-2.5 text-xs font-semibold rounded-lg border border-border bg-background hover:bg-muted/50 text-foreground flex items-center gap-2 transition-colors cursor-pointer shadow-2xs outline-none">
+            <DropdownMenuTrigger className="h-11 sm:h-8 px-2.5 text-xs font-semibold rounded-lg border border-border bg-background hover:bg-muted/50 text-foreground flex items-center gap-2 transition-colors cursor-pointer shadow-2xs outline-none">
               <SlidersHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
               <span>
                 {statusFilter === "ALL"
@@ -436,14 +446,14 @@ export function FloorPlan2D({
           </DropdownMenu>
 
           {/* Search desk ID */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Find a desk ID"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 pl-8 pr-3 text-xs rounded-lg border border-border bg-background placeholder:text-muted-foreground text-foreground w-44 focus:outline-none focus:ring-1 focus:ring-primary transition-colors shadow-2xs"
+              className="h-11 sm:h-8 w-full sm:w-44 pl-8 pr-3 text-xs rounded-lg border border-border bg-background placeholder:text-muted-foreground text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors shadow-2xs"
             />
           </div>
         </div>
@@ -474,7 +484,7 @@ export function FloorPlan2D({
       </div>
 
       {/* 3. The 2D Floor Plan Canvas */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-[#F8FAFC] dark:bg-slate-950/40 p-6 sm:p-8 relative">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-[#F8FAFC] dark:bg-slate-950/40 p-3 pt-10 sm:p-8 relative">
         {/* Top Center: WINDOWS label */}
         <div className="text-center font-mono text-[10px] tracking-widest text-slate-400 font-bold uppercase select-none mb-3">
           WINDOWS
@@ -485,7 +495,7 @@ export function FloorPlan2D({
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.max(z - 10, 80))}
-            className="w-6 h-6 flex items-center justify-center text-xs text-muted-foreground hover:text-foreground font-bold cursor-pointer"
+            className="w-10 h-10 sm:w-6 sm:h-6 flex items-center justify-center text-xs text-muted-foreground hover:text-foreground font-bold cursor-pointer"
             title="Zoom out"
           >
             —
@@ -496,7 +506,7 @@ export function FloorPlan2D({
           <button
             type="button"
             onClick={() => setZoomLevel((z) => Math.min(z + 10, 130))}
-            className="w-6 h-6 flex items-center justify-center text-xs text-muted-foreground hover:text-foreground font-bold cursor-pointer"
+            className="w-10 h-10 sm:w-6 sm:h-6 flex items-center justify-center text-xs text-muted-foreground hover:text-foreground font-bold cursor-pointer"
             title="Zoom in"
           >
             +
@@ -504,7 +514,7 @@ export function FloorPlan2D({
           <button
             type="button"
             onClick={() => setZoomLevel(100)}
-            className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:text-foreground border-l border-slate-200 dark:border-slate-700 cursor-pointer pl-1 ml-0.5"
+            className="w-10 h-10 sm:w-6 sm:h-6 flex items-center justify-center text-muted-foreground hover:text-foreground border-l border-slate-200 dark:border-slate-700 cursor-pointer pl-1 ml-0.5"
             title="Reset zoom"
           >
             <Maximize2 className="w-3 h-3" />
@@ -513,7 +523,7 @@ export function FloorPlan2D({
 
         {/* Scalable Layout Board */}
         <div
-          className="min-w-[1080px] w-full mx-auto transition-transform origin-top flex flex-row gap-6 lg:gap-8 items-start justify-between"
+          className="min-w-[1080px] w-full mx-auto pb-3 transition-transform origin-top flex flex-row gap-6 lg:gap-8 items-start justify-between"
           style={{ transform: `scale(${zoomLevel / 100})` }}
         >
           {/* Main Area: Stations A-E, Group Tables 1, 3, 5 */}
@@ -521,8 +531,7 @@ export function FloorPlan2D({
             {/* ROW 1: Station A, Station B, Group table 1 */}
             <div className="flex items-center gap-4 sm:gap-5">
               {/* Station A */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station A</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -540,11 +549,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Station B */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[180px] w-auto transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station B</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -562,11 +569,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Group table 1 */}
-              {(filterMode === "ALL" || filterMode === "GROUP") && (
-                <div className="rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all ml-2">
+              <div className={`rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all ml-2 ${workspaceOpacity('GROUP')}`}>
                   <span className="font-bold text-xs text-foreground text-center">
                     Group table 1
                   </span>
@@ -585,7 +590,6 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
             </div>
 
             {/* Middle Walkway Label */}
@@ -596,8 +600,7 @@ export function FloorPlan2D({
             {/* ROW 2: Group table 3, Station C, Station D, Station E */}
             <div className="flex items-center gap-4 sm:gap-5">
               {/* Group table 3 */}
-              {(filterMode === "ALL" || filterMode === "GROUP") && (
-                <div className="rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all">
+              <div className={`rounded-[32px] sm:rounded-[36px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center justify-center shadow-2xs shrink-0 min-w-[170px] w-auto h-auto transition-all ${workspaceOpacity('GROUP')}`}>
                   <span className="font-bold text-xs text-foreground text-center">
                     Group table 3
                   </span>
@@ -616,11 +619,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Station C */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station C</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -638,11 +639,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Station D */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[110px] w-auto shrink-0 transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[110px] w-auto shrink-0 transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station D</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -661,11 +660,9 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Station E */}
-              {(filterMode === "ALL" || filterMode === "INDIVIDUAL") && (
-                <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all">
+              <div className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[150px] w-auto shrink-0 transition-all ${workspaceOpacity('INDIVIDUAL')}`}>
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-foreground">Station E</span>
                     <span className="text-[11px] text-muted-foreground font-medium">
@@ -683,14 +680,12 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
             </div>
 
             {/* ROW 3: Group table 5 & Entrance Swing Arc */}
             <div className="flex items-center justify-between gap-6 pt-2">
               {/* Group table 5 */}
-              {(filterMode === "ALL" || filterMode === "GROUP") && (
-                <div className="rounded-[28px] sm:rounded-[32px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 px-5 py-4 flex flex-col items-center shadow-2xs min-w-[240px] w-auto h-auto transition-all">
+              <div className={`rounded-[28px] sm:rounded-[32px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 px-5 py-4 flex flex-col items-center shadow-2xs min-w-[240px] w-auto h-auto transition-all ${workspaceOpacity('GROUP')}`}>
                   <span className="font-bold text-xs text-foreground text-center">
                     Group table 5
                   </span>
@@ -709,7 +704,6 @@ export function FloorPlan2D({
                     ))}
                   </div>
                 </div>
-              )}
 
               {/* Architectural Entrance Doorway */}
               <div className="flex flex-col items-center justify-end self-end pr-8 pb-0">
@@ -765,7 +759,7 @@ export function FloorPlan2D({
                   {customPods.map(([podName, podSeats]) => (
                     <div
                       key={podName}
-                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[200px] w-auto transition-all"
+                      className={`p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-card shadow-2xs space-y-3 min-w-[200px] w-auto transition-all ${workspaceOpacity(podSeats[0]?.tableType ?? 'INDIVIDUAL')}`}
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-foreground">{podName}</span>
@@ -791,8 +785,7 @@ export function FloorPlan2D({
           </div>
 
           {/* Right Column: Group table 2 (top) and Group table 4 (bottom) */}
-          {(filterMode === "ALL" || filterMode === "GROUP") && (
-            <div className="flex flex-col gap-8 shrink-0 items-center justify-between">
+          <div className={`flex flex-col gap-8 shrink-0 items-center justify-between ${workspaceOpacity('GROUP')}`}>
               {/* Group table 2 */}
               <div className="min-w-[180px] w-auto h-auto rounded-[28px] sm:rounded-[32px] bg-slate-100/90 dark:bg-slate-700/80 border border-slate-200/80 dark:border-slate-600/50 p-4 sm:p-5 flex flex-col items-center shadow-2xs transition-all">
                 <span className="font-bold text-xs text-foreground text-center">
@@ -835,7 +828,6 @@ export function FloorPlan2D({
                 </div>
               </div>
             </div>
-          )}
         </div>
       </div>
 

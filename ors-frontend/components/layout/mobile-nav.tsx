@@ -22,7 +22,7 @@ export function MobileNav() {
     return (
       <nav
         aria-label="Mobile Navigation"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-lg border-t border-border px-4 py-2 shadow-lg flex items-center justify-center"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 min-h-16 pb-[max(0.5rem,env(safe-area-inset-bottom))] bg-background/95 backdrop-blur-lg border-t border-border px-4 py-2 shadow-lg flex items-center justify-center"
       >
         <Link
           href={ROUTES.ADMIN}
@@ -38,12 +38,12 @@ export function MobileNav() {
   return (
     <nav
       aria-label="Mobile Navigation"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-lg border-t border-border px-2 py-1 shadow-lg flex items-center justify-around"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 min-h-16 pb-[max(0.25rem,env(safe-area-inset-bottom))] bg-background/95 backdrop-blur-lg border-t border-border px-2 py-1 shadow-lg flex items-center justify-around"
     >
       <Link
         href={ROUTES.HOME}
-        className={`flex-1 py-1.5 px-1 flex flex-col items-center justify-center text-[10px] font-semibold transition-colors ${
-          isActive(ROUTES.HOME) ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
+        className={`flex-1 min-h-12 py-1.5 px-1 flex flex-col items-center justify-center rounded-xl text-[11px] font-semibold transition-colors ${
+          isActive(ROUTES.HOME) ? 'bg-primary/10 text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
         <MapPin className="w-5 h-5 mb-0.5" />
@@ -52,8 +52,8 @@ export function MobileNav() {
 
       <Link
         href={ROUTES.CHECKIN}
-        className={`flex-1 py-1.5 px-1 flex flex-col items-center justify-center text-[10px] font-semibold transition-colors relative ${
-          isActive(ROUTES.CHECKIN) ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
+        className={`flex-1 min-h-12 py-1.5 px-1 flex flex-col items-center justify-center rounded-xl text-[11px] font-semibold transition-colors relative ${
+          isActive(ROUTES.CHECKIN) ? 'bg-primary/10 text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
         <div className="relative">
@@ -69,8 +69,8 @@ export function MobileNav() {
 
       <Link
         href={ROUTES.SESSION}
-        className={`flex-1 py-1.5 px-1 flex flex-col items-center justify-center text-[10px] font-semibold transition-colors relative ${
-          isActive(ROUTES.SESSION) ? 'text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
+        className={`flex-1 min-h-12 py-1.5 px-1 flex flex-col items-center justify-center rounded-xl text-[11px] font-semibold transition-colors relative ${
+          isActive(ROUTES.SESSION) ? 'bg-primary/10 text-primary font-bold' : 'text-muted-foreground hover:text-foreground'
         }`}
       >
         <div className="relative">
@@ -85,8 +85,8 @@ export function MobileNav() {
       {mounted && currentUser?.role === 'ADMINISTRATOR' && (
         <Link
           href={ROUTES.ADMIN}
-          className={`flex-1 py-1.5 px-1 flex flex-col items-center justify-center text-[10px] font-semibold transition-colors ${
-            isActive(ROUTES.ADMIN) ? 'text-amber-600 font-bold' : 'text-muted-foreground hover:text-amber-600'
+          className={`flex-1 min-h-12 py-1.5 px-1 flex flex-col items-center justify-center rounded-xl text-[11px] font-semibold transition-colors ${
+            isActive(ROUTES.ADMIN) ? 'bg-amber-500/10 text-amber-600 font-bold' : 'text-muted-foreground hover:text-amber-600'
           }`}
         >
           <ShieldAlert className="w-5 h-5 mb-0.5 text-amber-500" />

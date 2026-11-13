@@ -34,7 +34,7 @@ export function ThemeToggle({
       <Button
         variant={variant}
         size={size}
-        className={`w-8 h-8 rounded-full border border-border/60 bg-background/50 opacity-50 ${className}`}
+        className={`w-10 h-10 sm:w-8 sm:h-8 rounded-full border border-border/60 bg-background/50 opacity-50 ${className}`}
         aria-label="Toggle theme"
       >
         <Sun className="w-4 h-4 text-muted-foreground" />
@@ -45,7 +45,7 @@ export function ThemeToggle({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={`inline-flex items-center justify-center w-8 h-8 rounded-full border border-[#edf1f7] dark:border-[#232c3d] bg-white dark:bg-[#161c26] hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground transition-colors cursor-pointer outline-none shadow-2xs ${className}`}
+        className={`inline-flex items-center justify-center w-10 h-10 sm:w-8 sm:h-8 rounded-full border border-[#edf1f7] dark:border-[#232c3d] bg-white dark:bg-[#161c26] hover:bg-slate-50 dark:hover:bg-slate-800 text-foreground transition-colors cursor-pointer outline-none shadow-2xs ${className}`}
         title={`Current theme: ${theme} (${resolvedTheme})`}
         aria-label="Toggle theme"
       >

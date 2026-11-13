@@ -56,7 +56,7 @@ public class AuthServiceImpl implements AuthService {
 
         String email = request.getEmail();
         if (email == null || email.trim().isEmpty()) {
-            email = identifier + "@student.university.edu";
+            email = identifier + "@lamduan.mfu.ac.th";
         } else {
             email = email.trim().toLowerCase();
         }

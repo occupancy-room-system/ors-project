@@ -26,6 +26,9 @@ interface AppContextValue {
   authModalPortal: 'student' | 'admin';
   openAuthModal: (portal?: 'student' | 'admin') => void;
   closeAuthModal: () => void;
+  isUserDetailModalOpen: boolean;
+  openUserDetailModal: () => void;
+  closeUserDetailModal: () => void;
 
   // Room data & backend state
   roomData: OccupancyMapResponse;
@@ -64,6 +67,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalPortal, setAuthModalPortal] = useState<'student' | 'admin'>('student');
+  const [isUserDetailModalOpen, setIsUserDetailModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
@@ -154,6 +158,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const closeAuthModal = useCallback(() => setIsAuthModalOpen(false), []);
 
+  const openUserDetailModal = useCallback(() => {
+    setIsUserDetailModalOpen(true);
+  }, []);
+
+  const closeUserDetailModal = useCallback(() => {
+    setIsUserDetailModalOpen(false);
+  }, []);
+
   const loadData = useCallback(async () => {
     await Promise.all([
       refetchRoom(),
@@ -175,6 +187,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     authModalPortal,
     openAuthModal,
     closeAuthModal,
+    isUserDetailModalOpen,
+    openUserDetailModal,
+    closeUserDetailModal,
     roomData,
     backendOnline,
     loadData,
