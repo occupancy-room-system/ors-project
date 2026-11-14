@@ -72,6 +72,9 @@ import {
   CheckCircle2,
   XCircle,
   Plus,
+  Minus,
+  Ban,
+  RotateCcw,
   Trash2,
   Edit,
   Shield,
@@ -98,6 +101,17 @@ import { ROUTES } from '@/config/routes';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { FloorPlan2D } from '@/app/(root)/components/floor-plan-2d';
+import {
+  isLabOpenAt,
+  getLabOperatingStatus,
+  formatLabHour,
+  formatLabHoursRange,
+  DEFAULT_LAB_CONFIG,
+  LAB_HOURS_DISPLAY,
+  LAB_TIMEZONE,
+  LAB_OPENS_HOUR,
+  LAB_CLOSES_HOUR,
+} from '@/utils/lab-hours';
 
 interface AdminDashboardProps {
   roomData: OccupancyMapResponse;
@@ -115,7 +129,15 @@ export function AdminDashboard({
   onTerminateSession,
 }: AdminDashboardProps) {
   const router = useRouter();
-  const { currentUser, setCurrentUser, showToast, openUserDetailModal } = useApp();
+  const {
+    currentUser,
+    setCurrentUser,
+    showToast,
+    openUserDetailModal,
+    labConfig,
+    updateLabConfig,
+    toggleWorkstationsAllowed,
+  } = useApp();
   const logoutMutation = useLogoutMutation();
 
   // Active section in left sidebar
@@ -207,6 +229,76 @@ export function AdminDashboard({
   const [isAddSeatOpen, setIsAddSeatOpen] = useState(false);
   const [isEditSeatOpen, setIsEditSeatOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+
+  // Time control & lab operating hours state (09:00 AM - 05:00 PM)
+  const [currentBangkokTime, setCurrentBangkokTime] = useState<Date>(() => new Date());
+  const [isTimeControlModalOpen, setIsTimeControlModalOpen] = useState(false);
+  const [tempOpenHour, setTempOpenHour] = useState<number>(labConfig.openHour);
+  const [tempCloseHour, setTempCloseHour] = useState<number>(labConfig.closeHour);
+
+  useEffect(() => {
+    setTempOpenHour(labConfig.openHour);
+    setTempCloseHour(labConfig.closeHour);
+  }, [labConfig.openHour, labConfig.closeHour]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBangkokTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const labStatus = useMemo(() => {
+    return getLabOperatingStatus(currentBangkokTime, labConfig);
+  }, [currentBangkokTime, labConfig]);
+
+  const handleSetWorkstationsAllowed = (allowed: boolean) => {
+    if (labConfig.workstationsEnabled === allowed) return;
+    updateLabConfig({ workstationsEnabled: allowed });
+    if (allowed) {
+      showToast('Workstations are now allowed for student reservations.', 'success');
+    } else {
+      showToast('Workstations are now disabled. Student reservations are locked.', 'info');
+    }
+  };
+
+  const handleToggleWorkstationsAllowed = () => {
+    handleSetWorkstationsAllowed(!labConfig.workstationsEnabled);
+  };
+
+  const handleUpdateLabHours = () => {
+    if (tempOpenHour >= tempCloseHour) {
+      showToast('Close time must be after open time.', 'error');
+      return;
+    }
+    updateLabConfig({
+      openHour: tempOpenHour,
+      closeHour: tempCloseHour,
+    });
+    showToast(`Workstation hours updated to ${formatLabHoursRange(tempOpenHour, tempCloseHour)}.`, 'success');
+  };
+
+  const handleAdjustOpenHour = (delta: number) => {
+    const newOpen = labConfig.openHour + delta;
+    if (newOpen < 6 || newOpen >= labConfig.closeHour) return;
+    updateLabConfig({ openHour: newOpen });
+    showToast(`Opening time updated to ${formatLabHour(newOpen)}.`, 'info');
+  };
+
+  const handleAdjustCloseHour = (delta: number) => {
+    const newClose = labConfig.closeHour + delta;
+    if (newClose <= labConfig.openHour || newClose > 23) return;
+    updateLabConfig({ closeHour: newClose });
+    showToast(`Closing time updated to ${formatLabHour(newClose)}.`, 'info');
+  };
+
+  const handleResetLabHours = () => {
+    updateLabConfig({
+      openHour: DEFAULT_LAB_CONFIG.openHour,
+      closeHour: DEFAULT_LAB_CONFIG.closeHour,
+    });
+    showToast('Operating schedule reset to 09:00 AM – 05:00 PM.', 'info');
+  };
 
   // Custom workspaces state (registered workspaces)
   const [customWorkspaces, setCustomWorkspaces] = useState<
@@ -896,6 +988,10 @@ export function AdminDashboard({
                 <div className="flex items-center gap-2.5">
                   <Monitor className={`w-4 h-4 ${activeSection === 'workstations' ? 'text-[#4a7cf6]' : 'text-slate-400'}`} />
                   <span>Workstations</span>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${!labConfig.workstationsEnabled ? 'bg-rose-500' : labStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`}
+                    title={!labConfig.workstationsEnabled ? 'Workstations Disabled' : labStatus.isOpen ? `SE Lab Open (${formatLabHoursRange(labConfig.openHour, labConfig.closeHour)})` : `SE Lab Closed (${formatLabHoursRange(labConfig.openHour, labConfig.closeHour)})`}
+                  />
                 </div>
                 <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                   activeSection === 'workstations'
@@ -1037,10 +1133,12 @@ export function AdminDashboard({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={async () => {
-                  await logoutMutation.mutateAsync();
+                  try {
+                    await logoutMutation.mutateAsync();
+                  } catch {}
                   setCurrentUser(null);
                   showToast('Logged out of Admin Console.', 'info');
-                  router.push(ROUTES.HOME);
+                  window.location.href = ROUTES.HOME;
                 }}
                 className="text-xs gap-2 text-destructive cursor-pointer hover:bg-rose-50 dark:hover:bg-rose-950/30"
               >
@@ -1052,7 +1150,7 @@ export function AdminDashboard({
 
           <button
             type="button"
-            onClick={() => showToast('ORS Lab Administrator Portal v2.4. Open 08:00 - 22:00.', 'info')}
+            onClick={() => showToast('ORS Lab Administrator Portal v2.4. Operating Hours: 09:00 - 17:00 (Bangkok).', 'info')}
             className="w-full flex items-center gap-2 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer px-1 pt-0.5"
           >
             <HelpCircle className="w-3.5 h-3.5" />
@@ -1126,10 +1224,12 @@ export function AdminDashboard({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={async () => {
-                      await logoutMutation.mutateAsync();
+                      try {
+                        await logoutMutation.mutateAsync();
+                      } catch {}
                       setCurrentUser(null);
                       showToast('Logged out of Admin Console.', 'info');
-                      router.push(ROUTES.HOME);
+                      window.location.href = ROUTES.HOME;
                     }}
                     className="text-xs gap-2 text-destructive cursor-pointer hover:bg-rose-50"
                   >
@@ -1628,6 +1728,105 @@ export function AdminDashboard({
                 </div>
               </div>
 
+              {/* Workstation Control: Allow & Disable Button, Adjust Time with Update Button */}
+              <div className="p-3 sm:px-4 rounded-2xl border border-[#edf1f7] dark:border-[#1f293d] bg-white dark:bg-[#111827] shadow-[0_1px_3px_rgba(0,0,0,0.02)] flex flex-wrap items-center justify-between gap-3">
+                {/* Allow and Disable Button */}
+                <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => handleSetWorkstationsAllowed(true)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      labConfig.workstationsEnabled
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Allow
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetWorkstationsAllowed(false)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      !labConfig.workstationsEnabled
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Disable
+                  </button>
+                </div>
+
+                {/* Adjust Time with Update Button */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Open Hour Stepper */}
+                  <div className="flex items-center gap-1 bg-[#f8fafc] dark:bg-slate-900 border border-[#edf1f7] dark:border-slate-800 rounded-xl px-2 py-1 shadow-3xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">
+                      Open
+                    </span>
+                    <button
+                      type="button"
+                      disabled={tempOpenHour <= 6}
+                      onClick={() => setTempOpenHour((h) => Math.max(6, Math.min(tempCloseHour - 1, h - 1)))}
+                      className="h-6 w-6 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                      title="Open 1 hour earlier"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="text-xs font-mono font-bold px-1 text-slate-800 dark:text-slate-200 min-w-[62px] text-center">
+                      {formatLabHour(tempOpenHour)}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={tempOpenHour >= tempCloseHour - 1}
+                      onClick={() => setTempOpenHour((h) => Math.min(tempCloseHour - 1, h + 1))}
+                      className="h-6 w-6 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                      title="Open 1 hour later"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Close Hour Stepper */}
+                  <div className="flex items-center gap-1 bg-[#f8fafc] dark:bg-slate-900 border border-[#edf1f7] dark:border-slate-800 rounded-xl px-2 py-1 shadow-3xs">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-1">
+                      Close
+                    </span>
+                    <button
+                      type="button"
+                      disabled={tempCloseHour <= tempOpenHour + 1}
+                      onClick={() => setTempCloseHour((h) => Math.max(tempOpenHour + 1, h - 1))}
+                      className="h-6 w-6 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                      title="Close 1 hour earlier"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="text-xs font-mono font-bold px-1 text-slate-800 dark:text-slate-200 min-w-[62px] text-center">
+                      {formatLabHour(tempCloseHour)}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={tempCloseHour >= 23}
+                      onClick={() => setTempCloseHour((h) => Math.min(23, h + 1))}
+                      className="h-6 w-6 rounded-lg flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                      title="Close 1 hour later"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {/* Update Button */}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleUpdateLabHours}
+                    className="h-8 px-3.5 rounded-xl bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] text-xs font-bold gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Update</span>
+                  </Button>
+                </div>
+              </div>
+
               {workstationViewMode === 'table' ? (
                 <>
                   {/* Filters Bar */}
@@ -1715,8 +1914,10 @@ export function AdminDashboard({
                   </DropdownMenu>
                 </div>
 
-                <div className="text-xs text-slate-500 font-medium">
-                  Showing <strong className="text-slate-900 dark:text-white">{filteredSeats.length}</strong> of {roomData.seats.length} workstations
+                <div className="flex items-center gap-3">
+                  <div className="text-xs text-slate-500 font-medium">
+                    Showing <strong className="text-slate-900 dark:text-white">{filteredSeats.length}</strong> of {roomData.seats.length} workstations
+                  </div>
                 </div>
               </div>
 
@@ -1848,6 +2049,36 @@ export function AdminDashboard({
 
               {/* Admin 2D Map Interactive Management Panel */}
               <div className="p-5 rounded-2xl border border-[#edf1f7] dark:border-[#1f293d] bg-white dark:bg-[#111827] shadow-[0_1px_3px_rgba(0,0,0,0.02)] space-y-4">
+                {/* Time Control Status Banner for 2D Map */}
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Clock className={`w-4 h-4 ${!labConfig.workstationsEnabled ? 'text-rose-500' : labStatus.isOpen ? 'text-emerald-500' : 'text-amber-500'}`} />
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">
+                      {!labConfig.workstationsEnabled
+                        ? 'Workstations are currently disabled by Administrator'
+                        : labStatus.isOpen
+                        ? `Operating Window Active: ${formatLabHoursRange(labConfig.openHour, labConfig.closeHour)}`
+                        : `Outside Operating Window (${formatLabHoursRange(labConfig.openHour, labConfig.closeHour)})`}
+                    </span>
+                    <span className="text-slate-400">·</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      {!labConfig.workstationsEnabled
+                        ? 'Reservations are locked for all workstations'
+                        : labStatus.isOpen
+                        ? `Closing deadline at ${formatLabHour(labConfig.closeHour)} (${Math.floor(labStatus.minutesUntilClose / 60)}h ${labStatus.minutesUntilClose % 60}m remaining)`
+                        : `Desk reservations unlock at ${formatLabHour(labConfig.openHour)}`}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsTimeControlModalOpen(true)}
+                    className="h-7 text-[11px] font-bold text-[#4a7cf6] hover:bg-[#4a7cf6]/10 px-2 cursor-pointer"
+                  >
+                    View Schedule Policy →
+                  </Button>
+                </div>
+
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#edf1f7] dark:border-[#1f293d] pb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[#f0f5ff] dark:bg-blue-950/60 text-[#4a7cf6] flex items-center justify-center font-bold text-sm">
@@ -1958,7 +2189,7 @@ export function AdminDashboard({
 
                 {/* Selected workstation details metadata grid */}
                 {adminSelectedSeat && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs pt-1">
                     <div className="p-3 rounded-xl bg-[#f8fafc] dark:bg-slate-900/60 border border-[#edf1f7] dark:border-slate-800">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Station Pod</span>
                       <span className="font-extrabold text-slate-800 dark:text-white mt-0.5 block">{adminSelectedSeat.podLabel}</span>
@@ -1997,6 +2228,15 @@ export function AdminDashboard({
                           ? 'Under repair'
                           : 'Available for check-in'}
                       </span>
+                    </div>
+                    <div className="p-3 rounded-xl bg-[#f8fafc] dark:bg-slate-900/60 border border-[#edf1f7] dark:border-slate-800">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Time Control (9am-5pm)</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${labStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                        <span className={`font-bold ${labStatus.isOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                          {labStatus.isOpen ? 'Check-in Open' : 'Closed Outside Hours'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -3472,6 +3712,116 @@ export function AdminDashboard({
               {isDeleting ? 'Deleting...' : 'Yes, Delete'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* -------------------------------------------------------------------- */}
+      {/* MODAL: LAB OPERATING HOURS & TIME CONTROL SETTINGS                   */}
+      {/* -------------------------------------------------------------------- */}
+      <Dialog open={isTimeControlModalOpen} onOpenChange={setIsTimeControlModalOpen}>
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-2xl bg-white dark:bg-[#161c26] border border-[#edf1f7] dark:border-[#232c3d] shadow-xl">
+          <div className="p-6 pb-5 bg-gradient-to-br from-[#f0f5ff] via-white to-[#f8fafc] dark:from-blue-950/40 dark:via-[#161c26] dark:to-[#131923] border-b border-[#edf1f7] dark:border-[#232c3d]">
+            <DialogHeader className="text-left">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-[#4a7cf6] text-white flex items-center justify-center font-bold shadow-xs">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-extrabold text-foreground">
+                    Workstation Time Control &amp; Schedule
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    Operating window parameters governing student workstation reservations and check-ins.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="grid grid-cols-2 gap-2.5 mt-3">
+              <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-900/60 border border-[#edf1f7] dark:border-[#232c3d]">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Current Status</div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`w-2 h-2 rounded-full ${labStatus.isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                  <span className={`text-xs font-bold ${labStatus.isOpen ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                    {labStatus.isOpen ? 'OPEN FOR USE' : 'CLOSED / AFTER HOURS'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-900/60 border border-[#edf1f7] dark:border-[#232c3d]">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Time Zone</div>
+                <div className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 mt-1 truncate">
+                  {LAB_TIMEZONE} (UTC+7)
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-4 text-xs">
+            {/* Schedule Specifications */}
+            <div className="space-y-2">
+              <span className="font-extrabold text-slate-900 dark:text-white uppercase tracking-wider text-[11px]">
+                Enforced Operating Schedule
+              </span>
+              <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Configured Daily Hours:</span>
+                  <span className="font-mono font-extrabold text-slate-800 dark:text-white">
+                    {formatLabHoursRange(labConfig.openHour, labConfig.closeHour)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Workstation Reservation Access:</span>
+                  <span className={`font-mono font-bold ${labConfig.workstationsEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    {labConfig.workstationsEnabled ? 'ALLOWED (Active)' : 'DISABLED (Locked)'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Auto-Session Termination:</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-white">
+                    {formatLabHour(labConfig.closeHour)} (Closing Deadline)
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Reservation Check-in Grace:</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-white">
+                    20 Minutes After Start
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">Live Clock (Bangkok):</span>
+                  <span className="font-mono font-bold text-[#4a7cf6] dark:text-blue-400">
+                    {labStatus.timeString}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Client Enforcement Note */}
+            <div className="p-3.5 rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50/70 dark:bg-blue-950/20 text-slate-600 dark:text-slate-300 space-y-1.5 leading-relaxed">
+              <div className="flex items-center gap-1.5 font-bold text-[#4070d8] dark:text-blue-300">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Adjustable Time Control Policy</span>
+              </div>
+              <p className="text-[11px]">
+                Admins can dynamically adjust operating hours using the stepper controls above or toggle workstation availability directly. Client reservations and check-ins strictly conform to these configured parameters in real-time.
+              </p>
+            </div>
+
+            <DialogFooter className="pt-2 flex items-center justify-between sm:justify-between w-full">
+              <span className="text-[11px] text-slate-400">
+                Staff Administrator Control
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsTimeControlModalOpen(false)}
+                className="text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl px-4 cursor-pointer"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

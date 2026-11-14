@@ -11,6 +11,7 @@ import th.mfu.dto.response.QrCodeItemResponse;
 import th.mfu.dto.response.UsageDashboardResponse;
 import th.mfu.entity.Seat;
 import th.mfu.service.AdminService;
+import th.mfu.util.LabOperatingHours;
 
 import java.util.List;
 import java.util.Map;
@@ -101,6 +102,32 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> deleteSessionRecord(@PathVariable Long sessionId) {
         adminService.deleteSessionRecord(sessionId);
         return ResponseEntity.ok(ApiResponse.success("Session log record deleted successfully", null));
+    }
+
+    @GetMapping("/operating-hours")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getOperatingHours() {
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "openHour", LabOperatingHours.getOpensAt().getHour(),
+                "closeHour", LabOperatingHours.getClosesAt().getHour(),
+                "workstationsEnabled", LabOperatingHours.isWorkstationsEnabled(),
+                "opensAt", LabOperatingHours.formatTime(LabOperatingHours.getOpensAt()),
+                "closesAt", LabOperatingHours.formatTime(LabOperatingHours.getClosesAt())
+        )));
+    }
+
+    @PutMapping("/operating-hours")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updateOperatingHours(
+            @RequestBody Map<String, Object> body) {
+        if (body.containsKey("openHour") && body.get("openHour") instanceof Number) {
+            LabOperatingHours.setOpenHour(((Number) body.get("openHour")).intValue());
+        }
+        if (body.containsKey("closeHour") && body.get("closeHour") instanceof Number) {
+            LabOperatingHours.setCloseHour(((Number) body.get("closeHour")).intValue());
+        }
+        if (body.containsKey("workstationsEnabled")) {
+            LabOperatingHours.setWorkstationsEnabled(Boolean.TRUE.equals(body.get("workstationsEnabled")));
+        }
+        return getOperatingHours();
     }
 }
 

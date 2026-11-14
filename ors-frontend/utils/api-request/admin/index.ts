@@ -73,4 +73,12 @@ export const adminApi = {
     if (params.endDate) q.set('endDate', params.endDate);
     return await api.get<any, UsageDashboardData>(`/api/v1/admin/usage-metrics?${q.toString()}`);
   },
+
+  getOperatingHours: async (): Promise<{ openHour: number; closeHour: number; workstationsEnabled: boolean }> => {
+    return await api.get<any, { openHour: number; closeHour: number; workstationsEnabled: boolean }>('/api/v1/admin/operating-hours');
+  },
+
+  updateOperatingHours: async (payload: { openHour?: number; closeHour?: number; workstationsEnabled?: boolean }): Promise<{ openHour: number; closeHour: number; workstationsEnabled: boolean }> => {
+    return await api.put<any, { openHour: number; closeHour: number; workstationsEnabled: boolean }>('/api/v1/admin/operating-hours', payload);
+  },
 };

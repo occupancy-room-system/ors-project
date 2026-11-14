@@ -7,8 +7,10 @@ import th.mfu.dto.response.OccupancyMapResponse;
 import th.mfu.dto.response.OccupancyMetricsResponse;
 import th.mfu.entity.Room;
 import th.mfu.service.RoomService;
+import th.mfu.util.LabOperatingHours;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/rooms")
@@ -18,6 +20,17 @@ public class RoomController {
 
     public RoomController(RoomService roomService) {
         this.roomService = roomService;
+    }
+
+    @GetMapping("/operating-hours")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getOperatingHours() {
+        return ResponseEntity.ok(ApiResponse.success(Map.of(
+                "openHour", LabOperatingHours.getOpensAt().getHour(),
+                "closeHour", LabOperatingHours.getClosesAt().getHour(),
+                "workstationsEnabled", LabOperatingHours.isWorkstationsEnabled(),
+                "opensAt", LabOperatingHours.formatTime(LabOperatingHours.getOpensAt()),
+                "closesAt", LabOperatingHours.formatTime(LabOperatingHours.getClosesAt())
+        )));
     }
 
     @GetMapping

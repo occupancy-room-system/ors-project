@@ -14,6 +14,15 @@ import { useActiveSessionQuery, useSessionHistoryQuery } from './use-session-que
 import { useUserReservationsQuery } from './use-reservation-query';
 import { useHealthQuery } from './use-health-query';
 import { DEFAULT_MAP_DATA } from '@/mock/mock-data';
+import { roomsApi } from '@/utils/api-request/rooms';
+import { adminApi } from '@/utils/api-request/admin';
+import {
+  LabConfig,
+  DEFAULT_LAB_CONFIG,
+  getLabConfig,
+  setLabConfig,
+  LAB_CONFIG_EVENT,
+} from '@/utils/lab-hours';
 
 export type ToastMessage = { text: string; type: 'success' | 'error' | 'info' };
 
@@ -29,6 +38,11 @@ interface AppContextValue {
   isUserDetailModalOpen: boolean;
   openUserDetailModal: () => void;
   closeUserDetailModal: () => void;
+
+  // Workstation Time & Access Control
+  labConfig: LabConfig;
+  updateLabConfig: (partial: Partial<LabConfig>) => void;
+  toggleWorkstationsAllowed: () => void;
 
   // Room data & backend state
   roomData: OccupancyMapResponse;
@@ -70,6 +84,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isUserDetailModalOpen, setIsUserDetailModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [labConfig, setLabConfigState] = useState<LabConfig>(DEFAULT_LAB_CONFIG);
+
+  // Sync labConfig with backend, localStorage & cross-tab events
+  useEffect(() => {
+    setLabConfigState(getLabConfig());
+
+    // Fetch live hours from backend
+    roomsApi.getOperatingHours()
+      .then((res) => {
+        if (res && typeof res.openHour === 'number') {
+          const synced = setLabConfig({
+            openHour: res.openHour,
+            closeHour: res.closeHour,
+            workstationsEnabled: res.workstationsEnabled,
+          });
+          setLabConfigState(synced);
+        }
+      })
+      .catch(() => {});
+
+    const handleConfigChange = (e: Event) => {
+      const custom = (e as CustomEvent<LabConfig>).detail;
+      if (custom) {
+        setLabConfigState(custom);
+      } else {
+        setLabConfigState(getLabConfig());
+      }
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'ors_lab_config') {
+        setLabConfigState(getLabConfig());
+      }
+    };
+
+    window.addEventListener(LAB_CONFIG_EVENT, handleConfigChange);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener(LAB_CONFIG_EVENT, handleConfigChange);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  const updateLabConfig = useCallback((partial: Partial<LabConfig>) => {
+    const next = setLabConfig(partial);
+    setLabConfigState(next);
+    adminApi.updateOperatingHours(partial).catch(() => {});
+  }, []);
+
+  const toggleWorkstationsAllowed = useCallback(() => {
+    setLabConfigState((prev) => {
+      const nextAllowed = !prev.workstationsEnabled;
+      const next = setLabConfig({ workstationsEnabled: nextAllowed });
+      adminApi.updateOperatingHours({ workstationsEnabled: nextAllowed }).catch(() => {});
+      return next;
+    });
+  }, []);
 
   // Hydrate user from localStorage safely on client mount
   useEffect(() => {
@@ -172,6 +243,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentUser ? refetchActiveSession() : Promise.resolve(),
       currentUser ? refetchReservations() : Promise.resolve(),
       currentUser ? refetchHistory() : Promise.resolve(),
+      roomsApi
+        .getOperatingHours()
+        .then((res) => {
+          if (res && typeof res.openHour === 'number') {
+            const synced = setLabConfig({
+              openHour: res.openHour,
+              closeHour: res.closeHour,
+              workstationsEnabled: res.workstationsEnabled,
+            });
+            setLabConfigState(synced);
+          }
+        })
+        .catch(() => {}),
     ]);
   }, [refetchRoom, refetchActiveSession, refetchReservations, refetchHistory, currentUser]);
 
@@ -190,6 +274,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isUserDetailModalOpen,
     openUserDetailModal,
     closeUserDetailModal,
+    labConfig,
+    updateLabConfig,
+    toggleWorkstationsAllowed,
     roomData,
     backendOnline,
     loadData,

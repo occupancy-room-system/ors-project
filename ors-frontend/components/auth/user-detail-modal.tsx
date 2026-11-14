@@ -78,11 +78,11 @@ export function UserDetailModal() {
       setCurrentUser(null);
       handleClose();
       showToast('Signed out of laboratory session.', 'info');
-      router.push(ROUTES.HOME);
+      window.location.href = ROUTES.HOME;
     } catch {
       setCurrentUser(null);
       handleClose();
-      router.push(ROUTES.HOME);
+      window.location.href = ROUTES.HOME;
     }
   };
 

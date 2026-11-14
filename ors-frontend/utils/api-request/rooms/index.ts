@@ -5,4 +5,8 @@ export const roomsApi = {
   getRoomMap: async (roomId: number = 1): Promise<OccupancyMapResponse> => {
     return await api.get<any, OccupancyMapResponse>(`/api/v1/rooms/${roomId}/map`);
   },
+
+  getOperatingHours: async (): Promise<{ openHour: number; closeHour: number; workstationsEnabled: boolean }> => {
+    return await api.get<any, { openHour: number; closeHour: number; workstationsEnabled: boolean }>('/api/v1/rooms/operating-hours');
+  },
 };
