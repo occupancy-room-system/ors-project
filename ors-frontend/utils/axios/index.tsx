@@ -1,6 +1,9 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
 const getBaseUrl = () => {
+  if (typeof window !== 'undefined' && !process.env.NEXT_PUBLIC_BASE_API) {
+    return '';
+  }
   return process.env.NEXT_PUBLIC_BASE_API || 'http://localhost:8080';
 };
 

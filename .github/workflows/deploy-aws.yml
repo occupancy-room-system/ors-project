@@ -1,0 +1,113 @@
+name: Deploy to Amazon ECS / AWS Cloud
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag (defaults to commit SHA)'
+        required: false
+        default: ''
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'doc/**'
+      - 'api-doc/**'
+      - 'instruction/**'
+
+concurrency:
+  group: deploy-aws-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+  ECR_SERVER_REPO: ors-server
+  ECR_FRONTEND_REPO: ors-frontend
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'ors-production-cluster' }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE || 'ors-production-service' }}
+  ECS_TASK_DEFINITION: deploy/aws/ecs-task-definition.json
+
+jobs:
+  deploy:
+    name: Build, Push to ECR & Deploy to ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Image Tag
+        id: vars
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Backend (ors-server)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -t $ECR_REGISTRY/$ECR_SERVER_REPO:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_SERVER_REPO:latest \
+            ./ors-server
+          docker push $ECR_REGISTRY/$ECR_SERVER_REPO:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_SERVER_REPO:latest
+          echo "server_image=$ECR_REGISTRY/$ECR_SERVER_REPO:$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Build and Push Frontend (ors-frontend)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.tag }}
+          NEXT_PUBLIC_BASE_API: ${{ vars.NEXT_PUBLIC_BASE_API || '' }}
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --build-arg NEXT_PUBLIC_BASE_API="$NEXT_PUBLIC_BASE_API" \
+            -t $ECR_REGISTRY/$ECR_FRONTEND_REPO:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_FRONTEND_REPO:latest \
+            ./ors-frontend
+          docker push $ECR_REGISTRY/$ECR_FRONTEND_REPO:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_FRONTEND_REPO:latest
+          echo "frontend_image=$ECR_REGISTRY/$ECR_FRONTEND_REPO:$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Render Task Definition for Server
+        id: render-server
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ env.ECS_TASK_DEFINITION }}
+          container-name: ors-server
+          image: ${{ env.server_image }}
+
+      - name: Render Task Definition for Frontend
+        id: render-frontend
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-server.outputs.task-definition }}
+          container-name: ors-frontend
+          image: ${{ env.frontend_image }}
+
+      - name: Deploy Amazon ECS Task Definition
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-frontend.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+

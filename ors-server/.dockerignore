@@ -1,0 +1,21 @@
+# Git and IDE files
+.git
+.gitignore
+.idea
+*.iml
+.vscode
+.settings
+.project
+.classpath
+
+# Build and output artifacts
+target/
+*.log
+*.class
+.mvn/wrapper/maven-wrapper.jar
+mvnw.cmd
+
+# Documentation and scratch files
+*.md
+docker-compose*.yml
+
