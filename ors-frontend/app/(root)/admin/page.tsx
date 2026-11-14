@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLoginMutation } from '@/hooks/use-auth-query';
 import { useApp } from '@/hooks/use-app-store';
 import { useActions } from '@/hooks/use-actions';
@@ -11,9 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Building2, Eye, EyeOff, Loader2, LockKeyhole, UserRound } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { ROUTES } from '@/config/routes';
 
 export default function AdminPage() {
-  const { currentUser, roomData, loadData, setCurrentUser, showToast } = useApp();
+  const router = useRouter();
+  const { currentUser, isHydrated, roomData, loadData, setCurrentUser, showToast } = useApp();
   const { handleToggleMaintenance, handleTerminateSession } = useActions();
   const loginMutation = useLoginMutation();
   const [adminId, setAdminId] = useState('');
@@ -22,6 +25,13 @@ export default function AdminPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const isAdmin = currentUser?.role === 'ADMINISTRATOR' || currentUser?.role === 'ROLE_ADMIN';
+
+  // If a non-admin (student) user is on /admin, immediately redirect them to the client page
+  React.useEffect(() => {
+    if (isHydrated && currentUser && !isAdmin) {
+      window.location.href = ROUTES.HOME;
+    }
+  }, [currentUser, isAdmin, isHydrated]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,18 +51,27 @@ export default function AdminPage() {
         password,
       });
 
-      if (user.role !== 'ADMINISTRATOR' && user.role !== 'ROLE_ADMIN') {
-        setCurrentUser(null);
-        setErrorMsg('This account does not have administrator access.');
-        return;
-      }
-
+      const isAdminUser = user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN';
       setCurrentUser(user);
       showToast(`Welcome back, ${user.fullName || user.username}!`, 'success');
+
+      if (isAdminUser) {
+        window.location.href = ROUTES.ADMIN;
+      } else {
+        window.location.href = ROUTES.HOME;
+      }
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Invalid administrator ID or password.');
     }
   };
+
+  if (!isHydrated || (currentUser && !isAdmin)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return (

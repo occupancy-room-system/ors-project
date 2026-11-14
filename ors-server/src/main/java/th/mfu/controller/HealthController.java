@@ -40,7 +40,7 @@ public class HealthController {
 
         HealthResponse health = new HealthResponse(
                 "ORS Server",
-                "OK",
+                "UP",
                 dbConnected,
                 activeSessions,
                 totalSeats

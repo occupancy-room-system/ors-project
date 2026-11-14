@@ -107,9 +107,15 @@ public class SessionServiceImpl implements SessionService {
 
         // 4. Activate the user's matched reservation
         LocalDateTime checkInTime = LabOperatingHours.now();
+        if (!LabOperatingHours.isWorkstationsEnabled()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Workstations are currently disabled by the laboratory administrator.");
+        }
         if (!LabOperatingHours.isOpenAt(checkInTime)) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "SE Lab sessions can only be started between 9:00 AM and 5:00 PM.");
+                    String.format("SE Lab sessions can only be started between %s and %s.",
+                            LabOperatingHours.formatTime(LabOperatingHours.getOpensAt()),
+                            LabOperatingHours.formatTime(LabOperatingHours.getClosesAt())));
         }
         LocalDateTime expiryTime = LabOperatingHours.sessionExpiry(
                 checkInTime, userPendingReservation.getDurationHours());

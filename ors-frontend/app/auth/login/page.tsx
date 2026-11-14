@@ -26,9 +26,27 @@ function LoginForm() {
   const registerMutation = useRegisterMutation();
 
   const getRedirectPath = (role: string) => {
+    const isAdmin = role === 'ADMINISTRATOR' || role === 'ROLE_ADMIN';
     const redirect = searchParams.get('redirect');
-    if (redirect && !redirect.startsWith('/auth')) return redirect;
-    return role === 'ADMINISTRATOR' || role === 'ROLE_ADMIN' ? ROUTES.ADMIN : ROUTES.HOME;
+
+    // Never redirect a student to an admin route or empty/auth route
+    if (!isAdmin && (!redirect || redirect.startsWith('/admin') || redirect.startsWith('/auth') || redirect === '')) {
+      return ROUTES.HOME;
+    }
+
+    // Default admin to admin dashboard
+    if (isAdmin) {
+      if (redirect && !redirect.startsWith('/auth') && redirect !== '/') {
+        return redirect;
+      }
+      return ROUTES.ADMIN;
+    }
+
+    if (redirect && !redirect.startsWith('/auth')) {
+      return redirect;
+    }
+
+    return ROUTES.HOME;
   };
 
   const initialTab: AuthTab = searchParams.get('tab') === 'signup' ? 'signup' : 'signin';
@@ -56,13 +74,14 @@ function LoginForm() {
     setErrorMsg(null);
     try {
       const { user } = await loginMutation.mutateAsync({ studentId: studentId.trim(), password });
-      if (user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN') {
-        setErrorMsg('Administrator accounts must sign in from the /admin page.');
-        return;
-      }
+      const isAdmin = user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN';
       setCurrentUser(user);
       showToast(`Welcome back, ${user.fullName || user.username}!`, 'success');
-      router.push(getRedirectPath(user.role));
+      if (isAdmin) {
+        window.location.href = ROUTES.ADMIN;
+      } else {
+        window.location.href = getRedirectPath(user.role);
+      }
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Invalid Student ID or password. Please try again.');
     }
@@ -79,9 +98,14 @@ function LoginForm() {
       await registerMutation.mutateAsync({ studentId: regStudentId.trim(), fullName: regFullName.trim(), password: regPassword });
       try {
         const { user } = await loginMutation.mutateAsync({ studentId: regStudentId.trim(), password: regPassword });
+        const isAdmin = user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN';
         setCurrentUser(user);
         showToast(`Account created! Welcome, ${user.fullName || user.username}!`, 'success');
-        router.push(ROUTES.HOME);
+        if (isAdmin) {
+          window.location.href = ROUTES.ADMIN;
+        } else {
+          window.location.href = ROUTES.HOME;
+        }
       } catch {
         showToast('Account registered! Please sign in.', 'success');
         setStudentId(regStudentId.trim());

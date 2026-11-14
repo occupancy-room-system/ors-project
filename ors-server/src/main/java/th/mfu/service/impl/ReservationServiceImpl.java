@@ -81,17 +81,25 @@ public class ReservationServiceImpl implements ReservationService {
         }
 
         LocalDateTime now = LabOperatingHours.now();
+        if (!LabOperatingHours.isWorkstationsEnabled()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Workstations are currently disabled by the laboratory administrator.");
+        }
         if (!LabOperatingHours.isOpenAt(now)) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "SE Lab is open from 9:00 AM to 5:00 PM. Reservations cannot be made while the lab is closed.");
+                    String.format("SE Lab is open from %s to %s. Reservations cannot be made while the lab is closed.",
+                            LabOperatingHours.formatTime(LabOperatingHours.getOpensAt()),
+                            LabOperatingHours.formatTime(LabOperatingHours.getClosesAt())));
         }
         if (startTime.isBefore(now.minusMinutes(10))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Reservation start time cannot be in the past.");
         }
-        if (startTime.toLocalTime().isBefore(LabOperatingHours.OPENS_AT)
+        if (startTime.toLocalTime().isBefore(LabOperatingHours.getOpensAt())
                 || !startTime.isBefore(LabOperatingHours.closingTime(startTime.toLocalDate()))) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
-                    "Reservation start time must be between 9:00 AM and 5:00 PM.");
+                    String.format("Reservation start time must be between %s and %s.",
+                            LabOperatingHours.formatTime(LabOperatingHours.getOpensAt()),
+                            LabOperatingHours.formatTime(LabOperatingHours.getClosesAt())));
         }
         if (startTime.isAfter(now.plusMinutes(75))) {
             throw new ApiException(HttpStatus.BAD_REQUEST,

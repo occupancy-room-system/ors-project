@@ -27,7 +27,8 @@ import {
   QrCode,
   Wrench,
 } from 'lucide-react';
-import { getLabSessionEndTime, isLabOpenAt } from '@/utils/lab-hours';
+import { getLabSessionEndTime, isLabOpenAt, formatLabHour } from '@/utils/lab-hours';
+import { useApp } from '@/hooks/use-app-store';
 
 interface SeatDetailDialogProps {
   seat: Seat | null;
@@ -89,19 +90,21 @@ export function SeatDetailDialog({
     return () => clearInterval(timer);
   }, []);
 
+  const { labConfig } = useApp();
+
   const arrivalTime = useMemo(() => {
     return new Date(currentTime.getTime() + arrivalOffsetMinutes * 60000);
   }, [currentTime, arrivalOffsetMinutes]);
 
   const endTime = useMemo(() => {
-    return getLabSessionEndTime(arrivalTime, durationHours);
-  }, [arrivalTime, durationHours]);
+    return getLabSessionEndTime(arrivalTime, durationHours, labConfig);
+  }, [arrivalTime, durationHours, labConfig]);
 
   const formatClock = (d: Date) =>
     d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok' });
 
   const arrivalOption = arrivalOptions.find((o) => o.offset === arrivalOffsetMinutes) || arrivalOptions[0];
-  const labIsOpen = isLabOpenAt(currentTime);
+  const labIsOpen = isLabOpenAt(currentTime, labConfig);
 
   const handleReservationSubmit = async () => {
     setErrorMsg(null);
@@ -112,14 +115,21 @@ export function SeatDetailDialog({
 
     setSubmitting(true);
     try {
+      if (!labConfig.workstationsEnabled) {
+        throw new Error('Workstations are currently disabled by the laboratory administrator.');
+      }
       // Always evaluate fresh arrival time at the exact moment of reservation
       const now = new Date();
-      if (!isLabOpenAt(now)) {
-        throw new Error('SE Lab reservations are available from 9:00 AM to 5:00 PM.');
+      if (!isLabOpenAt(now, labConfig)) {
+        throw new Error(
+          `SE Lab reservations are available from ${formatLabHour(labConfig.openHour)} to ${formatLabHour(labConfig.closeHour)}.`
+        );
       }
       const freshArrivalTime = new Date(now.getTime() + arrivalOffsetMinutes * 60000);
-      if (!isLabOpenAt(freshArrivalTime)) {
-        throw new Error('Reservation arrival must be before the 5:00 PM closing time.');
+      if (!isLabOpenAt(freshArrivalTime, labConfig)) {
+        throw new Error(
+          `Reservation arrival must be before the ${formatLabHour(labConfig.closeHour)} closing time.`
+        );
       }
       await onConfirmReservation({
         seatId: seat.id,
@@ -265,13 +275,13 @@ export function SeatDetailDialog({
                 <DropdownMenuContent align="center" className="w-[calc(100vw-2rem)] max-w-[412px] p-1.5 z-50">
                   {arrivalOptions.map((opt) => {
                     const optTime = new Date(currentTime.getTime() + opt.offset * 60000);
-                    const isOutsideHours = !isLabOpenAt(optTime);
+                    const isOutsideHours = !isLabOpenAt(optTime, labConfig);
                     const isSelected = arrivalOffsetMinutes === opt.offset;
                     return (
                       <DropdownMenuItem
                         key={opt.offset}
                         onClick={() => setArrivalOffsetMinutes(opt.offset)}
-                        disabled={!labIsOpen || isOutsideHours}
+                        disabled={!labIsOpen || isOutsideHours || !labConfig.workstationsEnabled}
                         className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs sm:text-sm cursor-pointer ${
                           isSelected ? 'bg-primary/10 text-primary font-bold' : ''
                         }`}
@@ -330,15 +340,21 @@ export function SeatDetailDialog({
             <div className="flex items-center gap-2 text-xs text-muted-foreground pt-0.5">
               <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span>
-                You can reserve up to 1 hour before arrival. SE Lab hours are 9:00 AM–5:00 PM;
+                You can reserve up to 1 hour before arrival. SE Lab hours are {formatLabHour(labConfig.openHour)}–{formatLabHour(labConfig.closeHour)};
                 sessions end at closing time even if the selected duration is longer.
               </span>
             </div>
-            {!labIsOpen && (
-              <div className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                Reservations are unavailable while the lab is closed.
+            {!labConfig.workstationsEnabled ? (
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs font-semibold text-rose-700 dark:text-rose-300">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>Workstations are currently disabled by the laboratory administrator. Reservations are suspended.</span>
               </div>
-            )}
+            ) : !labIsOpen ? (
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs font-medium text-amber-700 dark:text-amber-300">
+                <Clock className="w-4 h-4 shrink-0" />
+                <span>Reservations are unavailable while the lab is closed ({formatLabHour(labConfig.openHour)} – {formatLabHour(labConfig.closeHour)}).</span>
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -369,12 +385,18 @@ export function SeatDetailDialog({
           {isAvailable && (
             <button
               type="button"
-              disabled={submitting || !labIsOpen}
+              disabled={submitting || !labIsOpen || !labConfig.workstationsEnabled}
               onClick={handleReservationSubmit}
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-              {currentUser ? `Reserve seat ${displayCode}` : 'Sign in to Reserve'}
+              {!labConfig.workstationsEnabled
+                ? 'Workstations Disabled'
+                : !labIsOpen
+                ? 'Lab Closed'
+                : currentUser
+                ? `Reserve seat ${displayCode}`
+                : 'Sign in to Reserve'}
             </button>
           )}
         </div>

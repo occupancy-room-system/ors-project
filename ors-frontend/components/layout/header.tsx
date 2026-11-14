@@ -38,10 +38,12 @@ export function Header() {
   }, []);
 
   const handleLogout = async () => {
-    await logoutMutation.mutateAsync();
+    try {
+      await logoutMutation.mutateAsync();
+    } catch {}
     setCurrentUser(null);
     showToast('Signed out of laboratory session.', 'info');
-    router.push(ROUTES.HOME);
+    window.location.href = ROUTES.HOME;
   };
 
   const isOverview = pathname === ROUTES.HOME;

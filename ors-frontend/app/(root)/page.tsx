@@ -12,10 +12,11 @@ import { OfflineBanner } from '@/components/offline-banner';
 import { Badge } from '@/components/ui/badge';
 import { getInitials } from '@/lib/utils';
 import { Seat } from '@/types';
+import { formatLabHour } from '@/utils/lab-hours';
 
 export default function HomePage() {
   const router = useRouter();
-  const { roomData, backendOnline, loadData, currentUser, openAuthModal, openUserDetailModal } = useApp();
+  const { roomData, backendOnline, loadData, currentUser, openAuthModal, openUserDetailModal, labConfig } = useApp();
   const { handleConfirmReservation, handleToggleMaintenance } = useActions();
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
 
@@ -80,9 +81,15 @@ export default function HomePage() {
             </h1>
             <Badge
               variant="outline"
-              className="px-2 py-0.5 text-[10px] font-bold border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 rounded-md tracking-wider uppercase"
+              className={`px-2 py-0.5 text-[10px] font-bold rounded-md tracking-wider uppercase ${
+                !labConfig.workstationsEnabled
+                  ? 'border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300'
+                  : 'border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+              }`}
             >
-              SE Lab hours 09:00–17:00
+              {!labConfig.workstationsEnabled
+                ? 'Workstations Disabled'
+                : `SE Lab hours ${formatLabHour(labConfig.openHour)}–${formatLabHour(labConfig.closeHour)}`}
             </Badge>
           </div>
 

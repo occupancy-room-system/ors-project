@@ -66,21 +66,14 @@ export function AuthModal() {
       });
 
       const isAdmin = user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN';
-      if (isAdminPortal && !isAdmin) {
-        setErrorMsg('This account does not have administrator access.');
-        return;
-      }
-      if (!isAdminPortal && isAdmin) {
-        setErrorMsg('Administrator accounts must sign in from the /admin page.');
-        return;
-      }
-
       setCurrentUser(user);
       showToast(`Welcome back, ${user.fullName || user.username}!`, 'success');
       handleClose();
 
       if (isAdmin) {
-        router.push(ROUTES.ADMIN);
+        window.location.href = ROUTES.ADMIN;
+      } else {
+        window.location.href = ROUTES.HOME;
       }
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Invalid Student ID or password.');
@@ -120,9 +113,16 @@ export function AuthModal() {
           studentId: regStudentId.trim(),
           password: regPassword,
         });
+        const isAdmin = user.role === 'ADMINISTRATOR' || user.role === 'ROLE_ADMIN';
         setCurrentUser(user);
         showToast(`Account created! Welcome, ${user.fullName || user.username}!`, 'success');
         handleClose();
+
+        if (isAdmin) {
+          window.location.href = ROUTES.ADMIN;
+        } else {
+          window.location.href = ROUTES.HOME;
+        }
       } catch {
         showToast('Account registered successfully! Please sign in.', 'success');
         setLoginStudentId(regStudentId.trim());
