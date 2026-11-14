@@ -1317,7 +1317,7 @@ export function AdminDashboard({
                     <div className="w-7 h-7 rounded-lg bg-[#f0f5ff] dark:bg-blue-950/60 text-[#4a7cf6] flex items-center justify-center">
                       <Layers className="w-3.5 h-3.5" />
                     </div>
-                    <span className="font-bold text-sm text-slate-800 dark:text-white">Turing Hall 101</span>
+                    <span className="font-bold text-sm text-slate-800 dark:text-white">SE Lab</span>
                     <span className="font-mono text-xs text-slate-400 bg-[#f4f6fa] dark:bg-slate-800 px-2 py-0.5 rounded-md font-medium">
                       SE-LAB-101
                     </span>

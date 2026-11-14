@@ -3,9 +3,9 @@ import { OccupancyMapResponse, Room, Seat, HealthStatus } from '../types';
 export const INITIAL_ROOM: Room = {
   id: 1,
   roomCode: 'SE-LAB-101',
-  name: 'Software Engineering Innovation Lab',
+  name: 'SE Lab',
   description: 'Main undergraduate collaborative engineering workspace with 54 workstations: Stations A-E (Individual) and Group Tables 1-5 (Group Booking).',
-  building: 'Turing Hall of Computing',
+  building: 'SE Lab',
   floorLevel: 1,
   widthUnits: 14,
   heightUnits: 10,

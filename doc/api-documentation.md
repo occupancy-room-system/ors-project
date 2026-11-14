@@ -37,7 +37,7 @@ Returns complete 2D layout coordinates for room and seats.
 - **Response**:
 ```json
 {
-  "room": { "id": 1, "roomCode": "SE-LAB-101", "name": "SE Innovation Lab", "widthUnits": 12, "heightUnits": 8 },
+  "room": { "id": 1, "roomCode": "SE-LAB-101", "name": "SE Lab", "widthUnits": 12, "heightUnits": 8 },
   "seats": [
     { "id": 1, "seatCode": "SEAT-A1", "xPosition": 2, "yPosition": 2, "podLabel": "Pod A", "status": "AVAILABLE", "qrToken": "QR-SELAB101-A1" }
   ],

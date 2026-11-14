@@ -10,11 +10,9 @@ export function Footer() {
           </div>
           <span className="font-semibold text-foreground">Occupancy Room System (ORS)</span>
           <span>·</span>
-          <span>Software Engineering Lab 101</span>
+          <span>SE Lab</span>
         </div>
         <div className="flex items-center gap-4 text-[11px]">
-          <span>Turing Hall of Computing</span>
-          <span>·</span>
           <span>School of Information Technology, MFU</span>
         </div>
       </div>

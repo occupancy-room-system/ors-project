@@ -190,7 +190,7 @@ public class SessionServiceImpl implements SessionService {
         resp.setSeatId(seat.getId());
         resp.setSeatCode(seat.getSeatCode());
         resp.setPodLabel(seat.getPodLabel());
-        resp.setRoomName(room != null ? room.getName() : "Software Engineering Lab");
+        resp.setRoomName(room != null ? room.getName() : "SE Lab");
         resp.setCheckedInAt(primarySession.getCheckedInAt().toString());
         resp.setExpiresAt(primarySession.getExpiresAt().toString());
         resp.setStatus("ACTIVE");
@@ -277,7 +277,7 @@ public class SessionServiceImpl implements SessionService {
         resp.setSeatId(seat != null ? seat.getId() : null);
         resp.setSeatCode(seat != null ? seat.getSeatCode() : "SEAT-??");
         resp.setPodLabel(seat != null ? seat.getPodLabel() : "");
-        resp.setRoomName(room != null ? room.getName() : "Software Engineering Lab");
+        resp.setRoomName(room != null ? room.getName() : "SE Lab");
         resp.setCheckedInAt(session.getCheckedInAt().toString());
         resp.setExpiresAt(session.getExpiresAt().toString());
         resp.setStatus(session.getStatus());
@@ -308,7 +308,7 @@ public class SessionServiceImpl implements SessionService {
             resp.setSeatId(seat != null ? seat.getId() : null);
             resp.setSeatCode(seat != null ? seat.getSeatCode() : "SEAT-??");
             resp.setPodLabel(seat != null ? seat.getPodLabel() : "");
-            resp.setRoomName(room != null ? room.getName() : "Software Engineering Lab");
+            resp.setRoomName(room != null ? room.getName() : "SE Lab");
             resp.setCheckedInAt(s.getCheckedInAt().toString());
             resp.setExpiresAt(s.getExpiresAt().toString());
             resp.setCheckedOutAt(s.getCheckedOutAt() != null ? s.getCheckedOutAt().toString() : null);

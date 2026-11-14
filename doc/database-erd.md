@@ -25,9 +25,9 @@ erDiagram
     ROOMS {
         bigint id PK
         string room_code UK "e.g. SE-LAB-101"
-        string name "Software Engineering Lab"
+        string name "SE Lab"
         string description
-        string building "Turing Hall"
+        string building "SE Lab"
         int floor_level
         int width_units "Grid width"
         int height_units "Grid height"

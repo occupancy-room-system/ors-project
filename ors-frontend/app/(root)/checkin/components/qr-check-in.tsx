@@ -444,7 +444,7 @@ export function QrCheckIn({
     <div className="w-full max-w-6xl mx-auto space-y-6">
       {/* 1. Breadcrumb navigation */}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
-        <span>Turing Hall</span>
+        <span>Spaces</span>
         <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
         <span className="text-foreground font-medium">SE Lab</span>
       </div>
@@ -675,7 +675,7 @@ export function QrCheckIn({
           <p className="text-xs text-muted-foreground text-center">
             {activeReservation
               ? `Scan the QR code on desk ${displaySeatCode} to start your session.`
-              : 'Scan any available desk QR code in Turing Hall 101 to start a session.'}
+              : 'Scan any available desk QR code in the SE Lab to start a session.'}
           </p>
 
           {/* Camera Error Alert Banner if permission denied */}
@@ -722,7 +722,7 @@ export function QrCheckIn({
                 </div>
                 <div className="text-center space-y-1">
                   <div className="text-sm font-bold text-white">Verifying Desk Code...</div>
-                  <p className="text-[11px] text-slate-400">Connecting to Turing Hall reservation system</p>
+                  <p className="text-[11px] text-slate-400">Connecting to SE Lab reservation system</p>
                 </div>
               </div>
             )}
@@ -868,7 +868,7 @@ export function QrCheckIn({
 
       {/* 5. Page Footer */}
       <div className="pt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-muted-foreground">
-        <div>Turing Hall · Ground floor · Room 101</div>
+        <div>SE Lab · Ground floor</div>
         <div className="flex items-center gap-1.5 cursor-pointer hover:text-foreground">
           <HelpCircle className="w-3.5 h-3.5" />
           <span>Need help? Contact lab support</span>

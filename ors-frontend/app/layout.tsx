@@ -7,7 +7,7 @@ import NextTopLoader from 'nextjs-toploader';
 import { AppProvider } from '@/hooks/use-app-store';
 
 export const metadata: Metadata = {
-  title: 'Occupancy Room System (ORS) · Software Engineering Lab',
+  title: 'Occupancy Room System (ORS) · SE Lab',
   description:
     'Real-time laboratory seat occupancy, interactive 2D floor plan, QR check-in and session management',
 };

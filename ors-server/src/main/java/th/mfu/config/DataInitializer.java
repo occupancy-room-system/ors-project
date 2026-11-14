@@ -73,6 +73,12 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         if (roomRepository.count() > 0) {
+            roomRepository.findByRoomCode("SE-LAB-101").ifPresent(room -> {
+                room.setName("SE Lab");
+                room.setBuilding("SE Lab");
+                roomRepository.save(room);
+            });
+
             // Reset any orphaned occupied/reserved seats back to AVAILABLE
             List<Seat> seats = seatRepository.findAll();
             boolean updated = false;
@@ -95,9 +101,9 @@ public class DataInitializer implements CommandLineRunner {
         Room room = roomRepository.findByRoomCode("SE-LAB-101")
                 .orElseGet(() -> roomRepository.save(new Room(
                         "SE-LAB-101",
-                        "Software Engineering Innovation Lab",
+                        "SE Lab",
                         "Main undergraduate collaborative engineering workspace with 54 workstations: Stations A-E (Individual) and Group Tables 1-5 (Group Booking).",
-                        "Turing Hall of Computing",
+                        "SE Lab",
                         1,
                         14,
                         10,
