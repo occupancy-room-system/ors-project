@@ -1,105 +1,134 @@
 # Occupancy Room System (ORS)
 
-A modern, full-stack, enterprise-grade laboratory workstation occupancy and reservation system designed for University Software Engineering Laboratories. Students can check real-time seat occupancy from home or mobile before commuting, make short-advance reservations, scan physical desk QR codes on arrival to activate sessions, and manage their working hours. Laboratory administrators have access to live analytics, peak utilization graphs, usage telemetry over selectable date ranges, seat maintenance overrides, and printable QR sticker sheets.
-
-> 📖 **Team Member Setup & Instructions:**  
-> For the complete step-by-step setup guide, see the [**`instructions/`**](./instructions/README.md) folder or the all-in-one [**Complete Setup Guide**](./instructions/COMPLETE_SETUP_GUIDE.md).
+Occupancy Room System (ORS) is a modern, full-stack, enterprise-grade laboratory workstation occupancy and reservation system designed for University Software Engineering Laboratories. Students can check real-time seat occupancy from home or mobile before commuting, make short-advance reservations, scan physical desk QR codes on arrival to activate sessions, and manage their working hours. Laboratory administrators have access to live analytics, peak utilization graphs, usage telemetry over selectable date ranges, seat maintenance overrides, and printable QR sticker sheets.
 
 ---
 
-## 1. Project Architecture
+## 👥 Group Members
 
-The project is structured into three decoupled, production-ready modules:
-
+```text
+6831503001  Aung Kaung Set
+6831503002  Aung Kyaw Min Htet
+6831503003  Aung Myo Myint
+6831503022  Kaung Sett Paing
+6831503119  Bhone Pyae Ko
 ```
+
+---
+
+## 🛠️ Feature Responsibilities
+
+| Student ID | Member Name | Responsible Features |
+| :--- | :--- | :--- |
+| **6831503001** | **Aung Kaung Set** | **Frontend UI & Interactive Floor Plan:** 2D interactive lab floor plan (54 desks across stations A–E and group tables 1–5), visual seat status indicators (`AVAILABLE`, `OCCUPIED`, `RESERVED`, `EXPIRING_SOON`, `MAINTENANCE`), responsive UI layout, and dark/light theme integration. |
+| **6831503002** | **Aung Kyaw Min Htet** | **DevOps & Cloud Infrastructure:** Multi-stage Docker containerization, Docker Compose configuration (`ors-infra`), AWS EC2 automated setup & deploy scripts, Nginx reverse proxy configuration with SSL/TLS, and GitHub Actions CI/CD workflows. |
+| **6831503003** | **Aung Myo Myint** | **Backend Security & User Authentication:** Spring Boot 3 security architecture, stateless JWT authentication (`/api/auth/**`), Role-Based Access Control (RBAC for `ADMINISTRATOR` and `STUDENT`), password hashing, and user profile management. |
+| **6831503022** | **Kaung Sett Paing** | **Reservation & Session Management Engine:** Anti-hoarding workstation booking rules (1–4 hour slots, 1 hour max advance), physical arrival grace period verification (20 min window), check-in / check-out lifecycle, and background auto-expiry scheduled tasks. |
+| **6831503119** | **Bhone Pyae Ko** | **Admin Analytics & QR Code Subsystem:** Administrator dashboard metrics, time-series utilization charts & KPIs, ZXing QR code generation for 54 physical desk labels, and camera-based HTML5 QR code check-in scanner integration. |
+
+---
+
+## 🏗️ Project Architecture
+
+```text
 Sec_Project/
-├── instructions/     # Comprehensive step-by-step guide for team members (setup, run, test)
-├── ors-infra/        # Docker Compose infrastructure (MySQL 8 on port 3307, persistent volume, init scripts)
-├── ors-server/       # Spring Boot 3.x / Java 21 REST API backend (th.mfu)
+├── ors-infra/        # Database infrastructure (MySQL 8 Docker setup & initial SQL schema)
+├── ors-server/       # Spring Boot 3.4 / Java 21 REST API backend (th.mfu)
 ├── ors-frontend/     # Next.js 16 (App Router) + React 19 + Tailwind CSS frontend
-├── doc/              # Architecture, database ERD, setup, and testing documentation
+├── deploy/           # AWS EC2 deployment scripts, Nginx configuration, and domain setup
+├── doc/              # Architecture design, database ERD, and threat modeling documentation
 └── api-doc/          # REST API specifications and endpoint contracts
 ```
 
-### Module Responsibilities:
+### Port Allocations
 
-| Module | Tech Stack | Port | Purpose |
-|---|---|---|---|
-| **`ors-infra`** | Docker, MySQL 8.x | `3307:3306` | Isolated database container (`ors-db`), persistent volume `occupancy_mysql_data`, automated SQL schema & seed script |
-| **`ors-server`** | Java 21, Spring Boot, JPA, Security, JJWT, ZXing | `8080` | Authoritative session lifecycle, QR code generator, background auto-expiry scheduler, REST APIs (`/api/v1/*` and `/api/auth/*`) |
-| **`ors-frontend`** | Next.js 16, React 19, TypeScript, Tailwind CSS, Lucide, Recharts | `3000` | 2D interactive lab floor plan (54 desks), camera QR code scanner, tabular session HUD, admin metrics dashboard |
-
----
-
-## 2. Key Features
-
-1. **Architectural 2D Laboratory Floor Plan**:
-   - 54 desks mapped into 5 Individual Workstation Stations (A–E, 22 desks) and 5 Group Collaboration Tables (1–5, 32 desks).
-   - Real-time seat statuses: `AVAILABLE` (green), `OCCUPIED` (rose), `RESERVED` (indigo), `EXPIRING_SOON` (amber), `MAINTENANCE` (slate).
-   - Interactive modal to inspect desk specifications, reservation status, and initiate bookings.
-
-2. **Workstation Reservation with Anti-Hoarding Rules**:
-   - Duration options: 1 to 4 hours.
-   - Advance limit: Up to 1 hour ahead (prevents seat hoarding days in advance).
-   - Arrival grace period: 20 minutes to physically arrive and scan the QR code before the seat is automatically returned to the public pool.
-   - Group tables (2, 6, and 9 capacities) reserved atomically as a team.
-
-3. **QR Code Check-In & Camera Scanner**:
-   - HTML5 video camera barcode scanner with canvas fallback.
-   - Validates physical presence and reservation ownership (prevents students from claiming seats reserved by others).
-   - Server-authoritative session timer with 10-minute expiry notifications.
-
-4. **Administrator Dashboard & Telemetry**:
-   - Real-time lab KPI summary cards and occupancy rates.
-   - Time-series analytics with daily, weekly, and monthly intervals and custom date range filters.
-   - Top student utilization rankings.
-   - Instant seat maintenance toggles and force-termination controls.
-   - High-resolution printable QR sticker generation with SVG/data URIs for all 54 physical lab desks.
+| Service | Port | Description |
+| :--- | :--- | :--- |
+| **MySQL Database** | `3307` (container: 3306) | MySQL 8.4 database running via Docker |
+| **Spring Boot Backend** | `8080` | REST API service (`/api/v1/*`, `/api/auth/*`) |
+| **Next.js Frontend** | `3000` | Web application & Admin dashboard |
 
 ---
 
-## 3. Quick Start Guide
+## 🚀 How to Run the Project (Step-by-Step)
 
-### Step 1: Start MySQL Database Container
+### Prerequisites
+- **Java JDK 21** or later
+- **Node.js 20 LTS** or **22 LTS** and `npm`
+- **Docker & Docker Compose**
+- **Maven** (or use the included `./mvnw` wrapper in `ors-server`)
+
+---
+
+### Step 1: Start the MySQL Database (`ors-infra`)
+
+Open **Terminal 1**:
 ```bash
 cd ors-infra
+chmod +x startInfra.sh
 ./startInfra.sh
-# (or startInfra.bat on Windows)
 ```
-*MySQL is now reachable at `localhost:3307` with database `orsdb` and credentials `root / ors2026`.*
+*(On Windows, run `startInfra.bat`)*
 
-### Step 2: Start Spring Boot Backend Server
+> Verify MySQL is running:
+> ```bash
+> docker ps -f name=ors-db
+> ```
+> Expected status: `Up ... (healthy)` on port `3307`.
+
+---
+
+### Step 2: Start the Spring Boot Backend (`ors-server`)
+
+Open **Terminal 2**:
 ```bash
-cd ../ors-server
+cd ors-server
 mvn spring-boot:run
 ```
-*Backend runs on `http://localhost:8080`. Flyway and Spring Data JPA bootstrap 54 workstations, default users, active sessions, and 90 days of sample historical analytics.*
+*(Alternatively, use `./mvnw spring-boot:run`)*
 
-### Step 3: Start Next.js Frontend
+> Wait until the log displays:
+> ```text
+> Tomcat started on port 8080 (http)
+> Started App in X.XXX seconds
+> >>> ORS Database ready with 54 workstations and default admin: admin@gmail.com
+> ```
+> Test the health endpoint:
+> ```bash
+> curl http://localhost:8080/api/v1/health
+> ```
+
+---
+
+### Step 3: Start the Next.js Frontend (`ors-frontend`)
+
+Open **Terminal 3**:
 ```bash
-cd ../ors-frontend
+cd ors-frontend
 npm install
 npm run dev
 ```
-*Open `http://localhost:3000` in your browser.*
+
+> Open your browser at:
+> 👉 **`http://localhost:3000`**
 
 ---
 
-## 4. Default Demonstration Accounts
+## 🔑 Test Accounts & Demo Credentials
 
-| Role | Name | Email | Password |
-|---|---|---|---|
-| **Administrator** | Administrator (`admin`) | `admin@gmail.com` | `admin123` |
-| **Student** | Alex Chen | `alex.chen@lamduan.mfu.ac.th` | `StudentPass123!` |
-| **Student** | Sarah Kim | `sarah.kim@lamduan.mfu.ac.th` | `StudentPass123!` |
-| **Student** | Marcus Taylor | `marcus.taylor@lamduan.mfu.ac.th` | `StudentPass123!` |
-| **Student** | Emily Zhao | `emily.zhao@lamduan.mfu.ac.th` | `StudentPass123!` |
+| Role | Username / Email | Password | Access / Permissions |
+| :--- | :--- | :--- | :--- |
+| **Administrator** | `admin` *(or `admin@gmail.com`)* | `admin123` | Full access to `/admin` dashboard, workstation overrides, session termination, telemetry |
+| **Student** | `alex.chen@lamduan.mfu.ac.th` | `StudentPass123!` | Standard workstation reservation, QR check-in, profile viewing |
+| **Student** | `sarah.kim@lamduan.mfu.ac.th` | `StudentPass123!` | Standard workstation reservation, QR check-in, profile viewing |
+| **Student** | `marcus.taylor@lamduan.mfu.ac.th` | `StudentPass123!` | Standard workstation reservation, QR check-in, profile viewing |
+| **Student** | `emily.zhao@lamduan.mfu.ac.th` | `StudentPass123!` | Standard workstation reservation, QR check-in, profile viewing |
 
 ---
 
-## 5. Running Automated Tests
+## 🧪 Running Automated Tests
 
-### Backend Unit & Integration Tests (Spring Boot + MockMvc + H2)
+### Backend Unit & Integration Tests (Spring Boot + JUnit 5 + MockMvc + H2)
 ```bash
 cd ors-server
 mvn test
@@ -110,4 +139,10 @@ mvn test
 cd ors-frontend
 npm run build
 ```
-//new 
+
+---
+
+## 🔒 Security Compliance
+- **No hardcoded secrets:** All production credentials, JWT secret keys, and database passwords are parameterized through environment variables (`.env`).
+- Passwords are encrypted using **BCrypt** hashing.
+- API endpoints are protected using **JJWT** Bearer token authentication.

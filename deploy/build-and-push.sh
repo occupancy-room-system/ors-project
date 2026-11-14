@@ -10,6 +10,9 @@
 
 set -euo pipefail
 
+# Capture any CLI-passed overrides before sourcing .env
+CLI_NEXT_PUBLIC_BASE_API="${NEXT_PUBLIC_BASE_API:-}"
+
 # ------------------------------------------------------------------------------
 # 1. Directory Resolution & Load .env
 # ------------------------------------------------------------------------------
@@ -17,10 +20,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 ENV_FILE=""
-if [ -f "${PROJECT_ROOT}/.env" ]; then
-  ENV_FILE="${PROJECT_ROOT}/.env"
-elif [ -f "${SCRIPT_DIR}/.env" ]; then
+if [ -f "${SCRIPT_DIR}/.env" ]; then
   ENV_FILE="${SCRIPT_DIR}/.env"
+elif [ -f "${PROJECT_ROOT}/.env" ]; then
+  ENV_FILE="${PROJECT_ROOT}/.env"
 elif [ -f "$(pwd)/.env" ]; then
   ENV_FILE="$(pwd)/.env"
 fi
@@ -43,7 +46,8 @@ DOCKER_USERNAME="${DOCKER_USERNAME:-}"
 DOCKER_REPO="${DOCKER_REPO:-ors}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
 TARGET_PLATFORM="${TARGET_PLATFORM:-linux/amd64}"
-NEXT_PUBLIC_BASE_API="${NEXT_PUBLIC_BASE_API:-http://localhost:8080}"
+# Allow CLI environment variables to override .env
+NEXT_PUBLIC_BASE_API="${CLI_NEXT_PUBLIC_BASE_API:-${NEXT_PUBLIC_BASE_API:-http://localhost:8080}}"
 
 # Build the full image prefix: registry/username/repo
 if [ -n "${DOCKER_USERNAME}" ]; then

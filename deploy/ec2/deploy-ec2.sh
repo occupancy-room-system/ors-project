@@ -280,7 +280,14 @@ SERVER_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' ors-server 2>
 FRONTEND_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' ors-frontend 2>/dev/null || echo "unknown")
 
 if [ "$SERVER_HEALTH" = "healthy" ] && [ "$FRONTEND_HEALTH" = "healthy" ]; then
-  EC2_PUBLIC_IP=$(curl -s --max-time 3 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "<EC2_PUBLIC_IP>")
+  # IMDSv2 (token-based) → fallback to IMDSv1 → fallback to placeholder
+  IMDS_TOKEN=$(curl -s --max-time 2 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60" 2>/dev/null || true)
+  if [ -n "${IMDS_TOKEN}" ]; then
+    EC2_PUBLIC_IP=$(curl -s --max-time 3 -H "X-aws-ec2-metadata-token: ${IMDS_TOKEN}" http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+  else
+    EC2_PUBLIC_IP=$(curl -s --max-time 3 http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo "")
+  fi
+  EC2_PUBLIC_IP="${EC2_PUBLIC_IP:-<EC2_PUBLIC_IP>}"
   echo "✅ Deployment Successful!"
   echo ""
   echo "🌐 Access your application:"
