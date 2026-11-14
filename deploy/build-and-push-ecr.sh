@@ -9,7 +9,7 @@ set -euo pipefail
 # ------------------------------------------------------------------------------
 # 1. Configuration (Edit these or pass as environment variables)
 # ------------------------------------------------------------------------------
-AWS_REGION="${AWS_REGION:-ap-southeast-1}"                    # e.g., ap-southeast-1 (Singapore), us-east-1
+AWS_REGION="${AWS_REGION:-ap-southeast-2}"                    # e.g., ap-southeast-1 (Singapore), us-east-1
 AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-}"                         # e.g., 123456789012
 IMAGE_TAG="${IMAGE_TAG:-latest}"                             # e.g., v1.0.0 or latest
 TARGET_PLATFORM="${TARGET_PLATFORM:-linux/amd64}"            # Target architecture for AWS (linux/amd64 or linux/arm64)
