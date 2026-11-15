@@ -166,7 +166,7 @@ export function UserDetailModal() {
       }
 
       setCurrentUser(updatedUser);
-      showToast('User information updated successfully!', 'success');
+      showToast('Profile updated successfully!', 'success');
       handleClose();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Failed to update user details.');
@@ -189,7 +189,7 @@ export function UserDetailModal() {
               </div>
               <div className="space-y-0.5">
                 <DialogTitle className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
-                  User Information
+                  Profile
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
                   View and update your personal account details.

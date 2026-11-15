@@ -233,6 +233,7 @@ export function AdminDashboard({
   // Time control & lab operating hours state (09:00 AM - 05:00 PM)
   const [currentBangkokTime, setCurrentBangkokTime] = useState<Date>(() => new Date());
   const [isTimeControlModalOpen, setIsTimeControlModalOpen] = useState(false);
+  const [isDisableWorkstationsConfirmOpen, setIsDisableWorkstationsConfirmOpen] = useState(false);
   const [tempOpenHour, setTempOpenHour] = useState<number>(labConfig.openHour);
   const [tempCloseHour, setTempCloseHour] = useState<number>(labConfig.closeHour);
 
@@ -264,6 +265,17 @@ export function AdminDashboard({
 
   const handleToggleWorkstationsAllowed = () => {
     handleSetWorkstationsAllowed(!labConfig.workstationsEnabled);
+  };
+
+  const handleRequestDisableWorkstations = () => {
+    if (labConfig.workstationsEnabled) {
+      setIsDisableWorkstationsConfirmOpen(true);
+    }
+  };
+
+  const handleConfirmDisableWorkstations = () => {
+    handleSetWorkstationsAllowed(false);
+    setIsDisableWorkstationsConfirmOpen(false);
   };
 
   const handleUpdateLabHours = () => {
@@ -1745,7 +1757,7 @@ export function AdminDashboard({
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleSetWorkstationsAllowed(false)}
+                    onClick={handleRequestDisableWorkstations}
                     className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                       !labConfig.workstationsEnabled
                         ? 'bg-rose-600 text-white shadow-xs'
@@ -3290,7 +3302,7 @@ export function AdminDashboard({
               Edit Workstation {selectedSeat?.seatCode}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Modify workstation metadata or station grouping.
+              Update the seat code or status. Workspace and table type cannot be changed here.
             </DialogDescription>
           </DialogHeader>
 
@@ -3308,7 +3320,10 @@ export function AdminDashboard({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Workspace / Table Pod *</Label>
               <DropdownMenu>
-                <DropdownMenuTrigger className="w-full h-10 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs outline-none cursor-pointer">
+                <DropdownMenuTrigger
+                  disabled
+                  className="w-full h-10 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-between gap-2 shadow-2xs outline-none cursor-not-allowed opacity-70"
+                >
                   <div className="flex items-center gap-2 truncate">
                     <span className="w-2 h-2 rounded-full bg-[#4a7cf6] shrink-0" />
                     <span className="font-bold text-slate-800 dark:text-slate-100">{seatFormPod || 'Select Workspace'}</span>
@@ -3316,7 +3331,6 @@ export function AdminDashboard({
                       · {seatFormType === 'GROUP' ? 'Group Table' : 'Individual Station'}
                     </span>
                   </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[370px] max-h-72 overflow-y-auto p-1.5 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-xl rounded-xl">
                   <DropdownMenuLabel className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1">
@@ -3389,13 +3403,15 @@ export function AdminDashboard({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Table Type</Label>
               <DropdownMenu>
-                <DropdownMenuTrigger className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-2xs outline-none cursor-pointer">
+                <DropdownMenuTrigger
+                  disabled
+                  className="w-full h-9 px-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-between gap-2 shadow-2xs outline-none cursor-not-allowed opacity-70"
+                >
                   <span>
                     {seatFormType === 'GROUP'
                       ? 'GROUP (Shared Group Table)'
                       : 'INDIVIDUAL (Single Student Desk)'}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] max-w-[370px] p-1 z-50 bg-white dark:bg-[#161c26] border-[#edf1f7] dark:border-[#232c3d] shadow-lg rounded-xl">
                   <DropdownMenuItem
@@ -3822,6 +3838,45 @@ export function AdminDashboard({
               </Button>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isDisableWorkstationsConfirmOpen}
+        onOpenChange={setIsDisableWorkstationsConfirmOpen}
+      >
+        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl">
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-2">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-base font-extrabold text-foreground">
+              Disable workstations?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              Students will no longer be able to make workstation reservations until workstations are allowed again.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex flex-row items-center justify-end gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDisableWorkstationsConfirmOpen(false)}
+              className="text-xs h-9 px-4 rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={handleConfirmDisableWorkstations}
+              className="text-xs font-bold h-9 px-4 rounded-xl"
+            >
+              Disable Workstations
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

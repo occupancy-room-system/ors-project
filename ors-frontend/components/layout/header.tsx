@@ -20,9 +20,9 @@ import {
   LayoutGrid,
   ShieldAlert,
   LogOut,
-  User as UserIcon,
   ChevronDown,
   HelpCircle,
+  Pencil,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 
@@ -176,14 +176,13 @@ export function Header() {
                       >
                         {currentUser.role}
                       </Badge>
-                      <span className="text-[10px] text-primary font-medium hover:underline">Edit Info</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => openUserDetailModal()} className="text-xs gap-2 cursor-pointer font-medium">
-                  <UserIcon className="w-3.5 h-3.5" />
-                  User Information
+                  <Pencil className="w-3.5 h-3.5" />
+                  Edit Profile
                 </DropdownMenuItem>
                 {currentUser.role === 'ADMINISTRATOR' && (
                   <DropdownMenuItem onClick={() => router.push(ROUTES.ADMIN)} className="text-xs gap-2 cursor-pointer">
