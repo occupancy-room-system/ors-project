@@ -13,7 +13,7 @@ export function Footer() {
           <span>SE Lab</span>
         </div>
         <div className="flex items-center gap-4 text-[11px]">
-          <span>School of Information Technology, MFU</span>
+          <span>School of Applied Digital Technology, MFU</span>
         </div>
       </div>
     </footer>

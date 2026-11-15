@@ -86,8 +86,8 @@ export function AuthModal() {
       setErrorMsg('Student ID is required.');
       return;
     }
-    if (regStudentId.trim().length < 3) {
-      setErrorMsg('Student ID must be at least 3 characters.');
+    if (!/^\d{10}$/.test(regStudentId)) {
+      setErrorMsg('Student ID must be exactly 10 digits.');
       return;
     }
     if (!regFullName.trim()) {
@@ -288,9 +288,11 @@ export function AuthModal() {
                     type="text"
                     placeholder="e.g. 6531501001"
                     value={regStudentId}
-                    onChange={(e) => setRegStudentId(e.target.value)}
+                    onChange={(e) => setRegStudentId(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     className="pl-9 text-xs font-mono"
                     disabled={isPending}
+                    inputMode="numeric"
+                    maxLength={10}
                     autoComplete="username"
                     autoFocus
                   />
