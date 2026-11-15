@@ -11,5 +11,6 @@ public interface OperatingHoursService {
     LocalDateTime openingDateTime(LocalDate date);
     boolean isOpenAt(LocalDateTime dateTime);
     boolean isEnabled();
+    LocalDateTime now();
 }
 
