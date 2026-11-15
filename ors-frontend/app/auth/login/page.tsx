@@ -143,7 +143,7 @@ function LoginForm() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-foreground">SE Lab Occupancy</span>
                 <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                  Lab 101
+                  SE Lab
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">School of Information Technology</p>
@@ -241,7 +241,7 @@ function LoginForm() {
           </div>
           <div>
             <span className="text-sm font-bold text-foreground">SE Lab Occupancy</span>
-            <span className="text-[10px] text-muted-foreground block">SE Innovation Lab 101</span>
+            <span className="text-[10px] text-muted-foreground block">SE Lab</span>
           </div>
         </div>
 

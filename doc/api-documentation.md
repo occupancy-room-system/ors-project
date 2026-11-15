@@ -144,33 +144,14 @@ Returns complete 2D layout geometry (x, y coordinates, station pods, seat dimens
 - **Response `200 OK`**:
 ```json
 {
-  "success": true,
-  "data": {
-    "room": {
-      "id": 1,
-      "roomCode": "SE-LAB-101",
-      "name": "SE Innovation Lab",
-      "widthUnits": 30,
-      "heightUnits": 20
-    },
-    "seats": [
-      {
-        "id": 1,
-        "seatCode": "SEAT-A1",
-        "podLabel": "Station A",
-        "xPosition": 2,
-        "yPosition": 2,
-        "status": "AVAILABLE",
-        "hasMonitor": true,
-        "hasPower": true
-      }
-    ],
-    "totalSeats": 54,
-    "availableSeats": 42,
-    "occupiedSeats": 8,
-    "reservedSeats": 4,
-    "occupancyPercentage": 22.2
-  }
+  "room": { "id": 1, "roomCode": "SE-LAB-101", "name": "SE Innovation Lab", "widthUnits": 12, "heightUnits": 8 },
+  "seats": [
+    { "id": 1, "seatCode": "SEAT-A1", "xPosition": 2, "yPosition": 2, "podLabel": "Pod A", "status": "AVAILABLE", "qrToken": "QR-SELAB101-A1" }
+  ],
+  "totalSeats": 24,
+  "availableSeats": 19,
+  "occupiedSeats": 5,
+  "occupancyPercentage": 20.8
 }
 ```
 

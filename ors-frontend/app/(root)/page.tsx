@@ -68,7 +68,7 @@ export default function HomePage() {
             <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
               <span>Spaces</span>
               <span className="text-muted-foreground/60">&gt;</span>
-              <span>Turing Hall</span>
+              <span>SE Lab</span>
             </div>
           </div>
         </div>
@@ -77,7 +77,7 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-              Turing Hall 101
+              SE Lab
             </h1>
             <Badge
               variant="outline"

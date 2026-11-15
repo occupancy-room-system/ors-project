@@ -49,7 +49,7 @@ export default function SessionPage() {
     <div className="w-full max-w-6xl mx-auto space-y-6">
       {/* 1. Breadcrumb navigation */}
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground select-none">
-        <span>Turing Hall</span>
+        <span>Spaces</span>
         <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
         <span className="text-foreground font-medium">SE Lab</span>
       </div>
@@ -149,7 +149,7 @@ export default function SessionPage() {
 
       {/* 6. Page Footer */}
       <div className="pt-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-muted-foreground">
-        <div>Turing Hall · Ground floor · Room 101</div>
+        <div>SE Lab · Ground floor</div>
         <div className="flex items-center gap-1.5 cursor-pointer hover:text-foreground">
           <HelpCircle className="w-3.5 h-3.5" />
           <span>Need help? Contact lab support</span>

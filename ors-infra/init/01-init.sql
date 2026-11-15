@@ -142,8 +142,8 @@ ON DUPLICATE KEY UPDATE email=VALUES(email), password=VALUES(password), role=VAL
 
 -- 2. Insert Main Laboratory Room
 INSERT INTO rooms (id, room_code, name, description, building, floor_level, width_units, height_units, status) VALUES
-(1, 'SE-LAB-101', 'Software Engineering Innovation Lab', 'Main undergraduate collaborative engineering workspace with 54 workstations: Stations A-E (Individual) and Group Tables 1-5 (Group Booking).', 'Turing Hall of Computing', 1, 14, 10, 'ACTIVE')
-ON DUPLICATE KEY UPDATE name=VALUES(name);
+(1, 'SE-LAB-101', 'SE Lab', 'Main undergraduate collaborative engineering workspace with 54 workstations: Stations A-E (Individual) and Group Tables 1-5 (Group Booking).', 'SE Lab', 1, 14, 10, 'ACTIVE')
+ON DUPLICATE KEY UPDATE name=VALUES(name), building=VALUES(building);
 
 -- 3. Insert All 54 Workstation Seats
 INSERT INTO seats (id, room_id, seat_code, x_position, y_position, pod_label, table_type, group_table_id, group_table_name, group_capacity, status, qr_token) VALUES
@@ -224,6 +224,6 @@ ON DUPLICATE KEY UPDATE seat_code=VALUES(seat_code);
 
 -- 4. Initial Audit Log
 INSERT INTO audit_logs (id, actor_user_id, action, entity_type, entity_id, details) VALUES
-(1, 1, 'SYSTEM_INITIALIZATION', 'SYSTEM', '1', '{"note": "Initial room and 54 workstations created for SE Lab 101"}')
+(1, 1, 'SYSTEM_INITIALIZATION', 'SYSTEM', '1', '{"note": "Initial room and 54 workstations created for the SE Lab"}')
 ON DUPLICATE KEY UPDATE action=VALUES(action);
 

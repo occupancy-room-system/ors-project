@@ -240,7 +240,7 @@ export function SeatDetailDialog({
               You hold an active reservation for Seat {displayCode}
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Please proceed to Turing Hall 101 to scan the desk QR sticker and start your session.
+              Please proceed to the SE Lab to scan the desk QR sticker and start your session.
             </p>
             {onNavigateToCheckIn && (
               <button

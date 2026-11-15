@@ -29,7 +29,7 @@ erDiagram
         string room_code UK "e.g. SE-LAB-101"
         string name "SE Innovation Lab"
         string description
-        string building "Turing Hall"
+        string building "SE Lab"
         int floor_level
         int width_units "Grid Width (30)"
         int height_units "Grid Height (20)"

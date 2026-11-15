@@ -285,7 +285,7 @@ export function FloorPlan2D({
             Floor plan
           </h2>
           <span className="text-xs text-muted-foreground font-medium">
-            Ground floor · Room 101
+            SE Lab · Ground floor
           </span>
         </div>
 

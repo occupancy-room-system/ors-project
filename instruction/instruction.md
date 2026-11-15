@@ -295,7 +295,7 @@ The frontend is built with Next.js 16 and Tailwind CSS v4, communicating with th
    http://localhost:3000
    ```
 2. You will see:
-   - **Live Availability Banner**: Displays available desks vs. total capacity in Room 101.
+   - **Live Availability Banner**: Displays available desks vs. total capacity in the SE Lab.
    - **2D Floor Plan Canvas**: Shows Station A–E, Group Tables 1–5, and walkway entrance with color-coded seat statuses:
      - 🟢 **Green**: Available
      - ⚪ **Dark Gray**: Occupied / In Use
