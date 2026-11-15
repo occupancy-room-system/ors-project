@@ -58,6 +58,7 @@ export function QrCheckIn({
 }: QrCheckInProps) {
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState<boolean>(false);
 
   // Alert modal state for wrong QR, invalid token, or mismatch
   const [qrAlertModal, setQrAlertModal] = useState<{
@@ -417,7 +418,7 @@ export function QrCheckIn({
     e.target.value = '';
   };
 
-  const handleCancelReservation = async () => {
+  const confirmCancelReservation = async () => {
     if (activeReservation?.id && currentUser) {
       setActionLoading(true);
       try {
@@ -425,6 +426,7 @@ export function QrCheckIn({
           reservationId: activeReservation.id,
           userId: currentUser.id,
         });
+        setIsCancelDialogOpen(false);
       } catch (err: unknown) {
         setErrorMessage(err instanceof Error ? err.message : 'Failed to cancel reservation');
       } finally {
@@ -626,7 +628,7 @@ export function QrCheckIn({
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
                 <button
                   type="button"
-                  onClick={handleCancelReservation}
+                  onClick={() => setIsCancelDialogOpen(true)}
                   className="text-muted-foreground hover:text-destructive underline underline-offset-4 font-medium transition-colors cursor-pointer"
                 >
                   Cancel reservation
@@ -866,6 +868,47 @@ export function QrCheckIn({
           <span>Need help? Contact lab support</span>
         </div>
       </div>
+
+      <Dialog
+        open={isCancelDialogOpen}
+        onOpenChange={(open) => {
+          if (!actionLoading) {
+            setIsCancelDialogOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px] p-6 rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-foreground">
+              Cancel reservation?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-2 leading-relaxed">
+              Are you sure you want to cancel your reservation for Seat {displaySeatCode}?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={actionLoading}
+              onClick={() => setIsCancelDialogOpen(false)}
+              className="text-xs font-semibold px-4"
+            >
+              Keep reservation
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={actionLoading}
+              onClick={confirmCancelReservation}
+              className="text-xs font-semibold px-4"
+            >
+              {actionLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Confirm cancellation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Alert Error Modal (Wrong seat, invalid QR, check-in failure) */}
       <Dialog
