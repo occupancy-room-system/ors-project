@@ -101,6 +101,11 @@ public final class LabOperatingHours {
                 : closingTime(checkInTime.toLocalDate());
     }
 
+    public static boolean durationFitsBeforeClosing(
+            LocalDateTime startTime, int durationHours, LocalDateTime closingTime) {
+        return !startTime.plusHours(durationHours).isAfter(closingTime);
+    }
+
     public static LocalDateTime reservationActivationDeadline(LocalDateTime startTime) {
         LocalDateTime requestedDeadline = startTime.plusMinutes(20);
         return requestedDeadline.isBefore(closingTime(startTime.toLocalDate()))

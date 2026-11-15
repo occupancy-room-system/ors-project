@@ -107,10 +107,7 @@ import {
   formatLabHour,
   formatLabHoursRange,
   DEFAULT_LAB_CONFIG,
-  LAB_HOURS_DISPLAY,
   LAB_TIMEZONE,
-  LAB_OPENS_HOUR,
-  LAB_CLOSES_HOUR,
 } from '@/utils/lab-hours';
 
 interface AdminDashboardProps {
@@ -230,7 +227,7 @@ export function AdminDashboard({
   const [isEditSeatOpen, setIsEditSeatOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
 
-  // Time control & lab operating hours state (09:00 AM - 05:00 PM)
+  // Time control & lab operating hours state
   const [currentBangkokTime, setCurrentBangkokTime] = useState<Date>(() => new Date());
   const [isTimeControlModalOpen, setIsTimeControlModalOpen] = useState(false);
   const [isDisableWorkstationsConfirmOpen, setIsDisableWorkstationsConfirmOpen] = useState(false);
@@ -1162,7 +1159,7 @@ export function AdminDashboard({
 
           <button
             type="button"
-            onClick={() => showToast('ORS Lab Administrator Portal v2.4. Operating Hours: 09:00 - 17:00 (Bangkok).', 'info')}
+            onClick={() => showToast(`ORS Lab Administrator Portal v2.4. Operating Hours: ${formatLabHoursRange(labConfig.openHour, labConfig.closeHour)} (Bangkok).`, 'info')}
             className="w-full flex items-center gap-2 text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer px-1 pt-0.5"
           >
             <HelpCircle className="w-3.5 h-3.5" />

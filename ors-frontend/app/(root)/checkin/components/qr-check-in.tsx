@@ -34,7 +34,9 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
+import { useApp } from '@/hooks/use-app-store';
 import {
+  formatLabHour,
   getLabReservationActivationDeadline,
   parseLabDateTime,
 } from '@/utils/lab-hours';
@@ -83,6 +85,8 @@ export function QrCheckIn({
   const activateMutation = useActivateQrMutation();
   const checkInMutation = useCheckInMutation();
   const cancelMutation = useCancelReservationMutation();
+  const { labConfig } = useApp();
+  const closingTime = formatLabHour(labConfig.closeHour);
 
   // Determine current active or pending reservation - ONLY from actual userReservations
   const activeReservation = useMemo(() => {
@@ -129,13 +133,16 @@ export function QrCheckIn({
 
   const graceTime = useMemo(() => {
     if (!activeReservation?.startTime) return null;
-    const date = getLabReservationActivationDeadline(parseLabDateTime(activeReservation.startTime));
+    const date = getLabReservationActivationDeadline(
+      parseLabDateTime(activeReservation.startTime),
+      labConfig,
+    );
     return `Today, ${date.toLocaleTimeString([], {
       hour: 'numeric',
       minute: '2-digit',
       timeZone: 'Asia/Bangkok',
     })}`;
-  }, [activeReservation]);
+  }, [activeReservation, labConfig]);
 
   const playSuccessChime = () => {
     try {
@@ -596,7 +603,7 @@ export function QrCheckIn({
                 <div>
                   <div className="text-muted-foreground font-medium">Session duration</div>
                   <div className="font-bold text-foreground text-sm mt-0.5">{durationHours} hours requested</div>
-                  <div className="text-muted-foreground text-[11px]">Session ends by 5:00 PM</div>
+                  <div className="text-muted-foreground text-[11px]">Session ends by {closingTime}</div>
                 </div>
               </div>
 
@@ -610,7 +617,7 @@ export function QrCheckIn({
                   {graceTime}
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  You have up to 20 minutes to check in, but no later than 5:00 PM.
+                  You have up to 20 minutes to check in, but no later than {closingTime}.
                 </p>
               </div>
 
@@ -620,7 +627,7 @@ export function QrCheckIn({
                   When you arrive
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Find Seat {displaySeatCode} at {podLabel}. The QR label on your desk will start your session for up to {durationHours} hours, ending by 5:00 PM.
+                  Find Seat {displaySeatCode} at {podLabel}. The QR label on your desk will start your session for up to {durationHours} hours, ending by {closingTime}.
                 </p>
               </div>
 

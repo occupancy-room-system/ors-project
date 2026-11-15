@@ -31,6 +31,15 @@ class LabOperatingHoursTest {
     }
 
     @Test
+    void reservationDurationMustFitBeforeClosingTime() {
+        LocalDateTime startTime = date.atTime(18, 30);
+        LocalDateTime closingTime = date.atTime(20, 0);
+
+        assertTrue(LabOperatingHours.durationFitsBeforeClosing(startTime, 1, closingTime));
+        assertFalse(LabOperatingHours.durationFitsBeforeClosing(startTime, 2, closingTime));
+    }
+
+    @Test
     void reservationActivationWindowDoesNotExtendPastClosing() {
         assertEquals(date.atTime(17, 0),
                 LabOperatingHours.reservationActivationDeadline(date.atTime(16, 50)));

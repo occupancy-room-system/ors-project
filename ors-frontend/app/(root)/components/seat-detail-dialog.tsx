@@ -27,7 +27,12 @@ import {
   QrCode,
   Wrench,
 } from 'lucide-react';
-import { getLabSessionEndTime, isLabOpenAt, formatLabHour } from '@/utils/lab-hours';
+import {
+  getAvailableReservationDurations,
+  getLabSessionEndTime,
+  isLabOpenAt,
+  formatLabHour,
+} from '@/utils/lab-hours';
 import { useApp } from '@/hooks/use-app-store';
 
 interface SeatDetailDialogProps {
@@ -54,25 +59,6 @@ export function SeatDetailDialog({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  if (!seat) return null;
-
-  // Clean seat display name (e.g. SEAT-A1 -> A1, SEAT-GT1-1 -> G1-D1)
-  const formatSeatCode = (rawCode: string) => {
-    let code = rawCode.replace('SEAT-', '');
-    if (code.startsWith('GT')) {
-      const parts = code.replace('GT', '').split('-');
-      if (parts.length === 2) {
-        return `G${parts[0]}-D${parts[1]}`;
-      }
-    }
-    return code;
-  };
-
-  const displayCode = formatSeatCode(seat.seatCode);
-  const isAvailable = seat.status === 'AVAILABLE';
-  const isReservedByCurrentUser =
-    currentUser && seat.currentReservation && seat.currentReservation.userId === currentUser.id;
-
   // Arrival offset options up to 1 hour ahead
   const arrivalOptions = [
     { label: 'Now', offset: 0 },
@@ -96,9 +82,36 @@ export function SeatDetailDialog({
     return new Date(currentTime.getTime() + arrivalOffsetMinutes * 60000);
   }, [currentTime, arrivalOffsetMinutes]);
 
+  const availableDurations = useMemo(
+    () => getAvailableReservationDurations(arrivalTime, labConfig),
+    [arrivalTime, labConfig],
+  );
+  const selectedDurationHours = availableDurations.includes(durationHours)
+    ? durationHours
+    : availableDurations.at(-1) ?? 0;
+
   const endTime = useMemo(() => {
-    return getLabSessionEndTime(arrivalTime, durationHours, labConfig);
-  }, [arrivalTime, durationHours, labConfig]);
+    return getLabSessionEndTime(arrivalTime, selectedDurationHours, labConfig);
+  }, [arrivalTime, selectedDurationHours, labConfig]);
+
+  if (!seat) return null;
+
+  // Clean seat display name (e.g. SEAT-A1 -> A1, SEAT-GT1-1 -> G1-D1)
+  const formatSeatCode = (rawCode: string) => {
+    const code = rawCode.replace('SEAT-', '');
+    if (code.startsWith('GT')) {
+      const parts = code.replace('GT', '').split('-');
+      if (parts.length === 2) {
+        return `G${parts[0]}-D${parts[1]}`;
+      }
+    }
+    return code;
+  };
+
+  const displayCode = formatSeatCode(seat.seatCode);
+  const isAvailable = seat.status === 'AVAILABLE';
+  const isReservedByCurrentUser =
+    currentUser && seat.currentReservation && seat.currentReservation.userId === currentUser.id;
 
   const formatClock = (d: Date) =>
     d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Bangkok' });
@@ -131,10 +144,15 @@ export function SeatDetailDialog({
           `Reservation arrival must be before the ${formatLabHour(labConfig.closeHour)} closing time.`
         );
       }
+      if (!getAvailableReservationDurations(freshArrivalTime, labConfig).includes(selectedDurationHours)) {
+        throw new Error(
+          `Select a duration that ends by the ${formatLabHour(labConfig.closeHour)} closing time.`
+        );
+      }
       await onConfirmReservation({
         seatId: seat.id,
         startTime: freshArrivalTime.toISOString(),
-        durationHours,
+        durationHours: selectedDurationHours,
       });
       onClose();
     } catch (err: unknown) {
@@ -276,12 +294,13 @@ export function SeatDetailDialog({
                   {arrivalOptions.map((opt) => {
                     const optTime = new Date(currentTime.getTime() + opt.offset * 60000);
                     const isOutsideHours = !isLabOpenAt(optTime, labConfig);
+                    const noFullHourAvailable = getAvailableReservationDurations(optTime, labConfig).length === 0;
                     const isSelected = arrivalOffsetMinutes === opt.offset;
                     return (
                       <DropdownMenuItem
                         key={opt.offset}
                         onClick={() => setArrivalOffsetMinutes(opt.offset)}
-                        disabled={!labIsOpen || isOutsideHours || !labConfig.workstationsEnabled}
+                        disabled={!labIsOpen || isOutsideHours || noFullHourAvailable || !labConfig.workstationsEnabled}
                         className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs sm:text-sm cursor-pointer ${
                           isSelected ? 'bg-primary/10 text-primary font-bold' : ''
                         }`}
@@ -306,13 +325,15 @@ export function SeatDetailDialog({
               <label className="text-xs sm:text-sm font-bold text-foreground">Duration</label>
               <div className="grid grid-cols-4 gap-2">
                 {[1, 2, 3, 4].map((hours) => {
-                  const isSelected = durationHours === hours;
+                  const isSelected = selectedDurationHours === hours;
+                  const isAvailable = availableDurations.includes(hours);
                   return (
                     <button
                       key={hours}
                       type="button"
+                      disabled={!isAvailable}
                       onClick={() => setDurationHours(hours)}
-                      className={`h-11 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center justify-center shadow-3xs ${
+                      className={`h-11 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center justify-center shadow-3xs disabled:cursor-not-allowed disabled:opacity-40 ${
                         isSelected
                           ? 'border-2 border-blue-600 bg-blue-50/70 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 font-bold'
                           : 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-card text-slate-700 dark:text-slate-300 hover:border-slate-300'
@@ -329,7 +350,9 @@ export function SeatDetailDialog({
             <div className="rounded-xl bg-slate-50/90 dark:bg-slate-900/40 p-3.5 border border-slate-100 dark:border-slate-800 space-y-0.5">
               <div className="text-xs text-muted-foreground font-medium">Your reservation</div>
               <div className="text-sm font-bold text-foreground">
-                Today · {formatClock(arrivalTime)}–{formatClock(endTime)}
+                {selectedDurationHours > 0
+                  ? `Today · ${formatClock(arrivalTime)}–${formatClock(endTime)}`
+                  : `No full-hour session is available before ${formatLabHour(labConfig.closeHour)}`}
               </div>
               <div className="text-xs text-muted-foreground">
                 Seat {displayCode} · {seat.tableType === 'GROUP' ? 'Group desk' : 'Individual desk'}
@@ -341,7 +364,7 @@ export function SeatDetailDialog({
               <Info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <span>
                 You can reserve up to 1 hour before arrival. SE Lab hours are {formatLabHour(labConfig.openHour)}–{formatLabHour(labConfig.closeHour)};
-                sessions end at closing time even if the selected duration is longer.
+                available durations are limited by the closing time.
               </span>
             </div>
             {!labConfig.workstationsEnabled ? (
@@ -385,7 +408,7 @@ export function SeatDetailDialog({
           {isAvailable && (
             <button
               type="button"
-              disabled={submitting || !labIsOpen || !labConfig.workstationsEnabled}
+              disabled={submitting || !labIsOpen || !labConfig.workstationsEnabled || selectedDurationHours === 0}
               onClick={handleReservationSubmit}
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
             >

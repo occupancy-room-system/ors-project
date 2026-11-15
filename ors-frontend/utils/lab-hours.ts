@@ -215,6 +215,13 @@ export function isWithinOperatingHours(date: Date, customConfig?: LabConfig) {
   return date >= getLabTimeOnDate(date, config.openHour) && date < getLabTimeOnDate(date, config.closeHour);
 }
 
+export function getAvailableReservationDurations(start: Date, customConfig?: LabConfig): number[] {
+  const config = customConfig ?? getLabConfig();
+  const minutesUntilClose =
+    (getLabTimeOnDate(start, config.closeHour).getTime() - start.getTime()) / 60000;
+  return [1, 2, 3, 4].filter((hours) => hours * 60 <= minutesUntilClose);
+}
+
 export function getLabSessionEndTime(start: Date, durationHours: number, customConfig?: LabConfig) {
   const config = customConfig ?? getLabConfig();
   return new Date(Math.min(

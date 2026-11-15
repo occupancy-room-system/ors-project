@@ -105,6 +105,12 @@ public class ReservationServiceImpl implements ReservationService {
                             LabOperatingHours.formatTime(operatingHoursService.getOpensAt()),
                             LabOperatingHours.formatTime(operatingHoursService.getClosesAt())));
         }
+        LocalDateTime closingTime = operatingHoursService.closingDateTime(startTime.toLocalDate());
+        if (!LabOperatingHours.durationFitsBeforeClosing(startTime, duration, closingTime)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    String.format("Reservation duration must end by the %s closing time.",
+                            LabOperatingHours.formatTime(operatingHoursService.getClosesAt())));
+        }
         if (startTime.isAfter(now.plusMinutes(75))) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     "Reservations can only be made for arrival within 1 hour of the current time. To prevent workstation hoarding, long-advance bookings are not permitted.");

@@ -6,10 +6,12 @@ import { useCreateReservationMutation } from './use-reservation-query';
 import { useCheckOutMutation } from './use-session-query';
 import { useToggleSeatStatusMutation, useTerminateSessionMutation } from './use-admin-query';
 import { Seat } from '@/types';
+import { formatLabHour } from '@/utils/lab-hours';
 
 export function useActions() {
   const {
     currentUser,
+    labConfig,
     loadData,
     showToast,
     setActionLoading,
@@ -37,7 +39,7 @@ export function useActions() {
           durationHours: params.durationHours,
         });
         showToast(
-          `Workstation ${res.seatCode} reserved for up to ${res.durationHours}h, ending by 5:00 PM. Go to QR Check-In to activate.`,
+          `Workstation ${res.seatCode} reserved for up to ${res.durationHours}h, ending by ${formatLabHour(labConfig.closeHour)}. Go to QR Check-In to activate.`,
           'success',
         );
         await loadData();
@@ -50,7 +52,7 @@ export function useActions() {
         setActionLoading(false);
       }
     },
-    [currentUser, loadData, showToast, setActionLoading, openAuthModal, createReservationMutation],
+    [currentUser, labConfig.closeHour, loadData, showToast, setActionLoading, openAuthModal, createReservationMutation],
   );
 
   const handleCheckOut = useCallback(
