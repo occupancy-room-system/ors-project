@@ -131,7 +131,6 @@ cd ~/ors-app && ./deploy-ec2.sh
 
 | Secret | Description |
 | :--- | :--- |
-| `DOCKER_USERNAME` | Docker registry username |
 | `DOCKER_PASSWORD` | Docker registry password / access token |
 | `EC2_HOST` | Public IP or DNS of your EC2 instance |
 | `EC2_USER` | SSH username (`ec2-user` or `ubuntu`) |
@@ -142,9 +141,13 @@ cd ~/ors-app && ./deploy-ec2.sh
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `DOCKER_REGISTRY` | `docker.io` | Docker registry URL |
-| `DOCKER_USERNAME` | — | Registry username |
+| `DOCKER_USERNAME` | — | Registry username (may also be stored as a secret) |
 | `DOCKER_REPO` | `ors` | Repository name |
 | `NEXT_PUBLIC_BASE_API` | *(empty)* | Public backend URL for browsers |
+
+The `build-and-push` job needs `DOCKER_PASSWORD` as a repository secret. It can
+read `DOCKER_USERNAME` from either a repository secret or variable. Credentials
+stored only in the `production` environment are not available to that job.
 
 ---
 

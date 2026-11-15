@@ -50,11 +50,21 @@ jobs:
           fi
           echo "prefix=${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO }}" >> $GITHUB_OUTPUT
 
+      - name: Validate Docker Registry Credentials
+        env:
+          REGISTRY_USERNAME: ${{ secrets.DOCKER_USERNAME || vars.DOCKER_USERNAME }}
+          REGISTRY_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          if [ -z "$REGISTRY_USERNAME" ] || [ -z "$REGISTRY_PASSWORD" ]; then
+            echo "::error::Docker registry credentials are missing. Set DOCKER_PASSWORD as a repository secret and set DOCKER_USERNAME as a repository secret or variable."
+            exit 1
+          fi
+
       - name: Log in to Docker Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKER_REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
+          username: ${{ secrets.DOCKER_USERNAME || vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and Push Backend (ors-server)
