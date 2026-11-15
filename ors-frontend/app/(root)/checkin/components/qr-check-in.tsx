@@ -789,14 +789,6 @@ export function QrCheckIn({
                 <p className="text-xs text-slate-400 max-w-xs mt-1">
                   Click &quot;Turn camera on&quot; to scan your workstation QR sticker.
                 </p>
-                <Button
-                  size="sm"
-                  onClick={() => startCamera()}
-                  className="mt-4 gap-2 text-xs font-bold bg-[#4a7cf6] text-white hover:bg-[#3d6fe8] rounded-xl shadow-sm shadow-[#4a7cf6]/20 cursor-pointer"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>Turn camera on</span>
-                </Button>
               </div>
             )}
           </div>

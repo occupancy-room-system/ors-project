@@ -1,0 +1,143 @@
+name: Build, Push & Deploy to EC2
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag (defaults to commit SHA)'
+        required: false
+        default: ''
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'doc/**'
+      - 'api-doc/**'
+      - 'instruction/**'
+
+concurrency:
+  group: deploy-ec2-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_REGISTRY: ${{ vars.DOCKER_REGISTRY || 'docker.io' }}
+  DOCKER_USERNAME: ${{ vars.DOCKER_USERNAME }}
+  DOCKER_REPO: ${{ vars.DOCKER_REPO || 'ors' }}
+
+jobs:
+  # ============================================================================
+  # Job 1: Build & Push Docker Images to Private Registry
+  # ============================================================================
+  build-and-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.vars.outputs.tag }}
+      image_prefix: ${{ steps.vars.outputs.prefix }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set Image Tag & Prefix
+        id: vars
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+          fi
+          echo "prefix=${{ env.DOCKER_REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_REPO }}" >> $GITHUB_OUTPUT
+
+      - name: Log in to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Backend (ors-server)
+        env:
+          IMAGE_TAG: ${{ steps.vars.outputs.tag }}
+          IMAGE_PREFIX: ${{ steps.vars.outputs.prefix }}
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -t $IMAGE_PREFIX:server-$IMAGE_TAG \
+            -t $IMAGE_PREFIX:server-latest \
+            ./ors-server
+          docker push $IMAGE_PREFIX:server-$IMAGE_TAG
+          docker push $IMAGE_PREFIX:server-latest
+
+      - name: Build and Push Frontend (ors-frontend)
+        env:
+          IMAGE_TAG: ${{ steps.vars.outputs.tag }}
+          IMAGE_PREFIX: ${{ steps.vars.outputs.prefix }}
+          NEXT_PUBLIC_BASE_API: ${{ vars.NEXT_PUBLIC_BASE_API || '' }}
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --build-arg NEXT_PUBLIC_BASE_API="$NEXT_PUBLIC_BASE_API" \
+            -t $IMAGE_PREFIX:frontend-$IMAGE_TAG \
+            -t $IMAGE_PREFIX:frontend-latest \
+            ./ors-frontend
+          docker push $IMAGE_PREFIX:frontend-$IMAGE_TAG
+          docker push $IMAGE_PREFIX:frontend-latest
+
+  # ============================================================================
+  # Job 2: Deploy to EC2 via SSH
+  # ============================================================================
+  deploy-ec2:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: production
+
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1
+        env:
+          DOCKER_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+          DOCKER_USERNAME: ${{ env.DOCKER_USERNAME }}
+          DOCKER_REPO: ${{ env.DOCKER_REPO }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          IMAGE_PREFIX: ${{ needs.build-and-push.outputs.image_prefix }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || 22 }}
+          envs: DOCKER_REGISTRY,DOCKER_USERNAME,DOCKER_REPO,IMAGE_TAG,IMAGE_PREFIX
+          script_stop: true
+          script: |
+            set -e
+            echo "🚀 Starting deployment on EC2..."
+
+            APP_DIR="${HOME}/ors-app"
+            cd "${APP_DIR}"
+
+            # Login to Docker registry
+            echo "🔑 Authenticating with ${DOCKER_REGISTRY}..."
+            docker login "${DOCKER_REGISTRY}" --username "${DOCKER_USERNAME}" --password "${{ secrets.DOCKER_PASSWORD }}"
+
+            # Pull new images
+            echo "📥 Pulling images..."
+            docker pull ${IMAGE_PREFIX}:server-${IMAGE_TAG}
+            docker pull ${IMAGE_PREFIX}:frontend-${IMAGE_TAG}
+
+            # Update IMAGE_TAG in .env
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env 2>/dev/null || true
+
+            # Deploy
+            echo "🔄 Restarting services..."
+            export DOCKER_REGISTRY DOCKER_USERNAME DOCKER_REPO IMAGE_TAG
+            docker compose -f docker-compose.prod.yml down --remove-orphans || true
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Wait for health
+            echo "⏳ Waiting for services..."
+            sleep 15
+            docker compose -f docker-compose.prod.yml ps
+
+            echo "✅ Deployment complete!"

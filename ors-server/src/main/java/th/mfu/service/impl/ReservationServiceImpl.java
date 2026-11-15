@@ -16,6 +16,7 @@ import th.mfu.repository.ReservationRepository;
 import th.mfu.repository.SeatRepository;
 import th.mfu.repository.UserRepository;
 import th.mfu.service.ReservationService;
+import th.mfu.service.OperatingHoursService;
 import th.mfu.util.LabOperatingHours;
 
 import java.time.Instant;
@@ -30,6 +31,7 @@ import java.util.Optional;
 public class ReservationServiceImpl implements ReservationService {
 
     private final ReservationRepository reservationRepository;
+    private final OperatingHoursService operatingHoursService;
     private final SeatRepository seatRepository;
     private final UserRepository userRepository;
     private final OccupancySessionRepository sessionRepository;
@@ -37,7 +39,9 @@ public class ReservationServiceImpl implements ReservationService {
 
     public ReservationServiceImpl(ReservationRepository reservationRepository, SeatRepository seatRepository,
                                   UserRepository userRepository, OccupancySessionRepository sessionRepository,
-                                  AuditLogRepository auditLogRepository) {
+                                  AuditLogRepository auditLogRepository,
+                                  OperatingHoursService operatingHoursService) {
+        this.operatingHoursService = operatingHoursService;
         this.reservationRepository = reservationRepository;
         this.seatRepository = seatRepository;
         this.userRepository = userRepository;
@@ -63,10 +67,10 @@ public class ReservationServiceImpl implements ReservationService {
 
         // 3. Validate Start Time
         LocalDateTime startTime;
-        var zone = LabOperatingHours.ZONE_ID;
+        var zone = LabOperatingHours.ZONE_ID; // keep timezone constant
         try {
             if (req.getStartTime() == null || req.getStartTime().isBlank()) {
-                startTime = LabOperatingHours.now();
+                startTime = operatingHoursService.now();
             } else if (req.getStartTime().endsWith("Z")) {
                 startTime = LocalDateTime.ofInstant(Instant.parse(req.getStartTime()), zone);
             } else {
@@ -77,29 +81,29 @@ public class ReservationServiceImpl implements ReservationService {
                 }
             }
         } catch (Exception e) {
-            startTime = LabOperatingHours.now();
+            startTime = operatingHoursService.now();
         }
 
-        LocalDateTime now = LabOperatingHours.now();
-        if (!LabOperatingHours.isWorkstationsEnabled()) {
+        LocalDateTime now = operatingHoursService.now();
+        if (!operatingHoursService.isEnabled()) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     "Workstations are currently disabled by the laboratory administrator.");
         }
-        if (!LabOperatingHours.isOpenAt(now)) {
+        if (!operatingHoursService.isOpenAt(now)) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     String.format("SE Lab is open from %s to %s. Reservations cannot be made while the lab is closed.",
-                            LabOperatingHours.formatTime(LabOperatingHours.getOpensAt()),
-                            LabOperatingHours.formatTime(LabOperatingHours.getClosesAt())));
+                            LabOperatingHours.formatTime(operatingHoursService.getOpensAt()),
+                            LabOperatingHours.formatTime(operatingHoursService.getClosesAt())));
         }
         if (startTime.isBefore(now.minusMinutes(10))) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Reservation start time cannot be in the past.");
         }
-        if (startTime.toLocalTime().isBefore(LabOperatingHours.getOpensAt())
-                || !startTime.isBefore(LabOperatingHours.closingTime(startTime.toLocalDate()))) {
+        if (startTime.toLocalTime().isBefore(operatingHoursService.getOpensAt())
+                || !startTime.isBefore(operatingHoursService.closingDateTime(startTime.toLocalDate()))) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     String.format("Reservation start time must be between %s and %s.",
-                            LabOperatingHours.formatTime(LabOperatingHours.getOpensAt()),
-                            LabOperatingHours.formatTime(LabOperatingHours.getClosesAt())));
+                            LabOperatingHours.formatTime(operatingHoursService.getOpensAt()),
+                            LabOperatingHours.formatTime(operatingHoursService.getClosesAt())));
         }
         if (startTime.isAfter(now.plusMinutes(75))) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
@@ -143,8 +147,11 @@ public class ReservationServiceImpl implements ReservationService {
                     "You already have an active reservation for " + (r.getGroupTableName() != null ? r.getGroupTableName() : r.getSeatCode()) + ". Please activate or cancel it first.");
         }
 
-        // 6. Create Reservations (20 minute activation window from start time)
-        LocalDateTime activationDeadline = LabOperatingHours.reservationActivationDeadline(startTime);
+        // 6. Create Reservations (20‑minute activation window, capped by closing time)
+        LocalDateTime activationDeadline = startTime.plusMinutes(20);
+        if (!activationDeadline.isBefore(operatingHoursService.closingDateTime(startTime.toLocalDate()))) {
+            activationDeadline = operatingHoursService.closingDateTime(startTime.toLocalDate());
+        }
         Reservation primaryReservation = null;
 
         for (int i = 0; i < targetSeats.size(); i++) {

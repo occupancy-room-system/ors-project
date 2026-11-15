@@ -1,160 +1,167 @@
-# 🐳 ORS Docker & AWS Cloud Deployment Guide
+# 🐳 ORS Docker & EC2 Deployment Guide
 
-This guide covers building production Docker images for **`ors-server`** (Spring Boot 3.4 / Java 21) and **`ors-frontend`** (Next.js 16 / Node.js 20), and deploying them to **Amazon Web Services (AWS)**.
+This guide covers building production Docker images for **`ors-server`** (Spring Boot 3.4 / Java 21) and **`ors-frontend`** (Next.js 16 / Node.js 20), pushing them to a **private Docker registry**, and deploying to an **AWS EC2** instance.
 
 ---
 
-## 📁 Files Created
+## 📁 Files
 
-| File | Location | Description |
-| :--- | :--- | :--- |
-| **Backend Dockerfile** | `ors-server/Dockerfile` | Multi-stage build (`eclipse-temurin:21`), non-root user, container JVM tuning, healthcheck |
-| **Backend .dockerignore** | `ors-server/.dockerignore` | Excludes `target/`, IDE files, and logs |
-| **Frontend Dockerfile** | `ors-frontend/Dockerfile` | Multi-stage build (`node:20-alpine`), Next.js standalone output, non-root user, healthcheck |
-| **Frontend .dockerignore** | `ors-frontend/.dockerignore` | Excludes `node_modules/`, `.next/`, and local env files |
-| **Full-Stack Compose** | `docker-compose.yml` | Complete orchestration of MySQL 8, `ors-server`, and `ors-frontend` |
-| **AWS ECR Push Script (macOS/Linux)** | `deploy/build-and-push-ecr.sh` | Automated ECR login, multi-arch build, tag, and push |
-| **AWS ECR Push Script (Windows)** | `deploy/build-and-push-ecr.bat` | Automated ECR login, build, tag, and push for Windows |
+| File | Description |
+| :--- | :--- |
+| `ors-server/Dockerfile` | Multi-stage build (`eclipse-temurin:21`), non-root user, healthcheck |
+| `ors-frontend/Dockerfile` | Multi-stage build (`node:20-alpine`), Next.js standalone, healthcheck |
+| `docker-compose.yml` | Full-stack local development (builds from source) |
+| `deploy/build-and-push.sh` | Build & push images to any Docker registry |
+| `deploy/ec2/setup-ec2.sh` | One-time EC2 instance setup (Docker, Compose) |
+| `deploy/ec2/deploy-ec2.sh` | Pull from registry & deploy (supports `--rollback`) |
+| `deploy/ec2/docker-compose.prod.yml` | Production compose using pre-built registry images |
+| `.github/workflows/deploy-ec2.yml` | CI/CD: build → push → SSH deploy to EC2 |
 
 ---
 
 ## 🚀 1. Quick Test Locally with Docker Compose
 
-To test the entire production stack locally before pushing to AWS:
-
 ```bash
-# 1. From the Sec_Project root directory, build and start all containers:
+# Build and start all containers from source:
 docker compose up --build -d
 
-# 2. Check running container status and healthchecks:
+# Check status:
 docker compose ps
 
-# 3. View live application logs:
-docker compose logs -f
-
-# 4. Access the applications:
+# Access:
 # - Frontend: http://localhost:3000
-# - Backend Health: http://localhost:8080/api/v1/health
-# - MySQL Database: localhost:3307 (user: root, pass: ors2026)
+# - Backend:  http://localhost:8080/api/v1/health
+# - MySQL:    localhost:3307 (root / ors2026)
 
-# 5. Stop the containers:
+# Stop:
 docker compose down
 ```
 
 ---
 
-## ☁️ 2. Build and Push Images to Amazon Elastic Container Registry (ECR)
+## ☁️ 2. Build and Push Images to Private Registry
 
-### Prerequisites:
-- [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) installed and configured (`aws configure`).
-- Docker installed and running.
+### Prerequisites
+- Docker installed and running
+- A private Docker registry account (Docker Hub, GHCR, or self-hosted)
 
-### Automated Method:
-Run the deployment script from the project root:
+### Configure `.env`
 
 ```bash
-# Set your AWS Account ID and preferred Region:
-export AWS_ACCOUNT_ID=123456789012
-export AWS_REGION=ap-southeast-1
-export IMAGE_TAG=v1.0.0
-export NEXT_PUBLIC_BASE_API="https://api.yourdomain.com" # or your ALB DNS
+DOCKER_REGISTRY=docker.io          # or ghcr.io, registry.example.com:5000
+DOCKER_USERNAME=your-username
+DOCKER_REPO=ors
+IMAGE_TAG=latest
+```
 
-./deploy/build-and-push-ecr.sh
+### Build & Push
+
+```bash
+# Using the automated script (reads from .env):
+./deploy/build-and-push.sh
+
+# Override tag:
+IMAGE_TAG=v1.0.0 ./deploy/build-and-push.sh
+```
+
+This produces:
+- `docker.io/your-username/ors:server-latest`
+- `docker.io/your-username/ors:frontend-latest`
+
+---
+
+## 🏗️ 3. Deploy to AWS EC2
+
+### Step 1: Launch EC2 Instance
+
+- **AMI**: Amazon Linux 2023 or Ubuntu 22.04+
+- **Instance Type**: `t3.medium` recommended
+- **Security Group**: Allow inbound TCP `22`, `3000`, `8080`
+
+### Step 2: Setup EC2 (One-Time)
+
+```bash
+scp -i ors-key.pem deploy/ec2/setup-ec2.sh ubuntu@54.253.77.235:~
+ssh -i ors-key.pem ubuntu@54.253.77.235 './setup-ec2.sh'
+```
+
+### Step 3: Login to Docker Registry on EC2
+
+```bash
+ssh -i ors-key.pem ubuntu@54.253.77.235
+docker login
+```
+
+### Step 4: Copy Deployment Files
+
+```bash
+scp -i ors-key.pem deploy/ec2/deploy-ec2.sh deploy/ec2/docker-compose.prod.yml ubuntu@54.253.77.235:~/ors-app/
+```
+
+### Step 5: Configure Environment
+
+```bash
+ssh -i ors-key.pem ubuntu@54.253.77.235
+nano ~/ors-app/.env
+# Set DOCKER_USERNAME, NEXT_PUBLIC_BASE_API=http://54.253.77.235:8080, passwords, etc.
+```
+
+### Step 6: Deploy
+
+```bash
+cd ~/ors-app && ./deploy-ec2.sh
+```
+
+### Rollback
+
+```bash
+./deploy-ec2.sh --rollback
 ```
 
 ---
 
-### Manual Step-by-Step Method:
+## 🔄 4. Automated CI/CD with GitHub Actions
 
-#### Step 1: Authenticate Docker with AWS ECR
-```bash
-aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com
-```
+`.github/workflows/deploy-ec2.yml` automatically:
+1. Builds Docker images on push to `main`
+2. Pushes to your private Docker registry
+3. SSHs into EC2 and deploys
 
-#### Step 2: Create ECR Repositories (One-Time)
-```bash
-aws ecr create-repository --repository-name ors-server --region ap-southeast-1
-aws ecr create-repository --repository-name ors-frontend --region ap-southeast-1
-```
+### Required GitHub Secrets
 
-#### Step 3: Build & Tag Backend Image
-```bash
-# Note: --platform linux/amd64 ensures compatibility with AWS x86 instances when building from an Apple Silicon Mac
-docker build \
-  --platform linux/amd64 \
-  -t ors-server:latest \
-  -t <AWS_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/ors-server:latest \
-  ./ors-server
-```
+| Secret | Description |
+| :--- | :--- |
+| `DOCKER_USERNAME` | Docker registry username |
+| `DOCKER_PASSWORD` | Docker registry password / access token |
+| `EC2_HOST` | Public IP or DNS of your EC2 instance |
+| `EC2_USER` | SSH username (`ec2-user` or `ubuntu`) |
+| `EC2_SSH_KEY` | Private SSH key (PEM content) |
 
-#### Step 4: Build & Tag Frontend Image
-```bash
-docker build \
-  --platform linux/amd64 \
-  --build-arg NEXT_PUBLIC_BASE_API="https://api.yourdomain.com" \
-  -t ors-frontend:latest \
-  -t <AWS_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/ors-frontend:latest \
-  ./ors-frontend
-```
+### Optional GitHub Variables
 
-#### Step 5: Push to Amazon ECR
-```bash
-docker push <AWS_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/ors-server:latest
-docker push <AWS_ACCOUNT_ID>.dkr.ecr.ap-southeast-1.amazonaws.com/ors-frontend:latest
-```
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `DOCKER_REGISTRY` | `docker.io` | Docker registry URL |
+| `DOCKER_USERNAME` | — | Registry username |
+| `DOCKER_REPO` | `ors` | Repository name |
+| `NEXT_PUBLIC_BASE_API` | *(empty)* | Public backend URL for browsers |
 
 ---
 
-## 🏗️ 3. Deploying to AWS Options
-
-### Option A: AWS ECS (Elastic Container Service) with Fargate (Recommended)
-1. **Database**: Create an **Amazon RDS MySQL 8.0+** instance in your private subnet.
-2. **Task Definition**:
-   - Create an ECS Task Definition with two containers: `ors-server` and `ors-frontend` (or separate tasks).
-   - Configure Environment Variables for `ors-server`:
-     - `SPRING_DATASOURCE_URL`: `jdbc:mysql://<rds-endpoint>:3306/orsdb?useSSL=true&serverTimezone=UTC`
-     - `SPRING_DATASOURCE_USERNAME`: `<master-user>`
-     - `SPRING_DATASOURCE_PASSWORD`: `<master-password>`
-     - `APP_JWT_SECRET`: `<secure-256-bit-key>`
-   - Configure Environment Variables for `ors-frontend`:
-     - `BACKEND_API_URL`: `http://ors-server:8080` (via ECS Service Connect or internal ALB)
-3. **Application Load Balancer (ALB)**:
-   - Route `/api/*` to target group `ors-server` (port 8080).
-   - Route `/*` to target group `ors-frontend` (port 3000).
-
-### Option B: AWS App Runner (Fastest, Fully Managed)
-1. Create an App Runner service pointing directly to `<AWS_ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/ors-server:latest`. Port: `8080`.
-2. Create a second App Runner service pointing to `<AWS_ACCOUNT_ID>.dkr.ecr.<region>.amazonaws.com/ors-frontend:latest`. Port: `3000`.
-
-### Option C: AWS EC2 (Single VM / Docker Compose)
-1. Launch an Amazon Linux 2023 or Ubuntu EC2 instance.
-2. Install Docker & Docker Compose:
-   ```bash
-   sudo dnf install docker -y && sudo systemctl enable --now docker
-   sudo usermod -aG docker ec2-user
-   ```
-3. Copy `docker-compose.yml` to the EC2 instance, populate `.env`, and run:
-   ```bash
-   docker compose up -d
-   ```
-
----
-
-## 🔒 4. Environment Variables Reference
+## 🔒 5. Environment Variables Reference
 
 ### Backend (`ors-server`)
-| Variable | Description | Example / Default |
+| Variable | Description | Default |
 | :--- | :--- | :--- |
-| `SPRING_DATASOURCE_URL` | JDBC Connection String | `jdbc:mysql://rds-host:3306/orsdb?useSSL=true` |
-| `SPRING_DATASOURCE_USERNAME`| Database username | `root` / `admin` |
-| `SPRING_DATASOURCE_PASSWORD`| Database password | Stored in AWS Secrets Manager |
+| `SPRING_DATASOURCE_URL` | JDBC Connection String | `jdbc:mysql://ors-db:3306/orsdb` |
+| `SPRING_DATASOURCE_USERNAME` | Database username | `root` |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | `ors2026` |
 | `APP_JWT_SECRET` | 256-bit HMAC secret | `404E6352...` |
-| `SERVER_PORT` | HTTP port for server | `8080` |
+| `SERVER_PORT` | HTTP port | `8080` |
 
 ### Frontend (`ors-frontend`)
-| Variable | Description | Example / Default |
+| Variable | Description | Default |
 | :--- | :--- | :--- |
-| `BACKEND_API_URL` | Server-side rewrite URL | `http://ors-server:8080` or internal DNS |
-| `NEXT_PUBLIC_BASE_API` | Client browser API base | `https://api.yourdomain.com` |
+| `BACKEND_API_URL` | Server-side proxy URL | `http://ors-server:8080` |
+| `NEXT_PUBLIC_BASE_API` | Client browser API base | `http://localhost:8080` |
 | `PORT` | Node.js listening port | `3000` |
-
