@@ -626,13 +626,15 @@ export function QrCheckIn({
 
               {/* Footer: Cancel & user attribution */}
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                <button
+                <Button
                   type="button"
+                  variant="destructive"
+                  size="sm"
                   onClick={() => setIsCancelDialogOpen(true)}
-                  className="text-muted-foreground hover:text-destructive underline underline-offset-4 font-medium transition-colors cursor-pointer"
+                  className="text-xs font-medium"
                 >
                   Cancel reservation
-                </button>
+                </Button>
                 <span className="text-muted-foreground font-medium">
                   Reserved for {reservedForName}
                 </span>

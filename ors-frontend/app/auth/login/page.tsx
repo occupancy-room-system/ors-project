@@ -90,7 +90,7 @@ function LoginForm() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regStudentId.trim()) { setErrorMsg('Student ID is required.'); return; }
-    if (regStudentId.trim().length < 3) { setErrorMsg('Student ID must be at least 3 characters.'); return; }
+    if (!/^\d{10}$/.test(regStudentId)) { setErrorMsg('Student ID must be exactly 10 digits.'); return; }
     if (!regFullName.trim()) { setErrorMsg('Full name is required.'); return; }
     if (regPassword.length < 6) { setErrorMsg('Password must be at least 6 characters.'); return; }
     setErrorMsg(null);
@@ -146,7 +146,7 @@ function LoginForm() {
                   SE Lab
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground">School of Information Technology</p>
+              <p className="text-xs text-muted-foreground">School of Applied Digital Technology</p>
             </div>
           </div>
 
@@ -345,9 +345,11 @@ function LoginForm() {
                       type="text"
                       placeholder="e.g. 6531501001"
                       value={regStudentId}
-                      onChange={(e) => setRegStudentId(e.target.value)}
+                      onChange={(e) => setRegStudentId(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       className="pl-9 text-xs h-10 rounded-xl"
                       disabled={isPending}
+                      inputMode="numeric"
+                      maxLength={10}
                       autoComplete="username"
                       autoFocus
                     />
