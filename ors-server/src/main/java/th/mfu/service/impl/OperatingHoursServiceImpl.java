@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import th.mfu.entity.OperatingHours;
 import th.mfu.repository.OperatingHoursRepository;
 import th.mfu.service.OperatingHoursService;
+import th.mfu.util.LabOperatingHours;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,8 +21,12 @@ public class OperatingHoursServiceImpl implements OperatingHoursService {
     }
 
     private OperatingHours getCurrent() {
-        Optional<OperatingHours> opt = repository.findTopByOrderByIdDesc();
-        return opt.orElseThrow(() -> new IllegalStateException("Operating hours not configured"));
+        return repository.findTopByOrderByIdDesc()
+                .orElseGet(() -> new OperatingHours(
+                        LabOperatingHours.getOpensAt(),
+                        LabOperatingHours.getClosesAt(),
+                        LabOperatingHours.isWorkstationsEnabled()
+                ));
     }
 
     @Override
@@ -56,6 +61,11 @@ public class OperatingHoursServiceImpl implements OperatingHoursService {
     @Override
     public boolean isEnabled() {
         return getCurrent().isEnabled();
+    }
+
+    @Override
+    public LocalDateTime now() {
+        return LabOperatingHours.now();
     }
 }
 
