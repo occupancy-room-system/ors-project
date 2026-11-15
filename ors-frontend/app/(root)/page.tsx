@@ -10,13 +10,12 @@ import { FloorPlan2D } from './components/floor-plan-2d';
 import { SeatDetailDialog } from './components/seat-detail-dialog';
 import { OfflineBanner } from '@/components/offline-banner';
 import { Badge } from '@/components/ui/badge';
-import { getInitials } from '@/lib/utils';
 import { Seat } from '@/types';
 import { formatLabHour } from '@/utils/lab-hours';
 
 export default function HomePage() {
   const router = useRouter();
-  const { roomData, backendOnline, loadData, currentUser, openAuthModal, openUserDetailModal, labConfig } = useApp();
+  const { roomData, backendOnline, loadData, currentUser, openAuthModal, labConfig } = useApp();
   const { handleConfirmReservation, handleToggleMaintenance } = useActions();
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
 
@@ -40,31 +39,6 @@ export default function HomePage() {
         {/* Top Left: User Account & Breadcrumbs */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            {currentUser && (
-              <button
-                type="button"
-                onClick={openUserDetailModal}
-                className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-border/80 bg-background hover:bg-muted/60 transition-colors shadow-2xs group text-left cursor-pointer"
-                title="Click to view and edit user information"
-              >
-                <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-[9px] font-bold flex items-center justify-center">
-                  {getInitials(currentUser.fullName || currentUser.username)}
-                </div>
-                <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {currentUser.fullName || currentUser.username}
-                </span>
-                <Badge
-                  variant="secondary"
-                  className="text-[9px] font-bold px-1.5 py-0 h-4 leading-none"
-                >
-                  {currentUser.role}
-                </Badge>
-                <span className="text-[10px] text-muted-foreground hidden sm:inline">
-                  · Edit Details
-                </span>
-              </button>
-            )}
-
             <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
               <span>Spaces</span>
               <span className="text-muted-foreground/60">&gt;</span>
