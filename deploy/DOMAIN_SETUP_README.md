@@ -83,7 +83,7 @@ User Browser
 
 SSH into your EC2 instance:
 ```bash
-ssh -i your-key.pem ubuntu@54.253.77.235
+ssh -i ors-key.pem ubuntu@54.253.77.235
 ```
 
 Install Nginx and Certbot:

@@ -81,29 +81,29 @@ This produces:
 ### Step 2: Setup EC2 (One-Time)
 
 ```bash
-scp deploy/ec2/setup-ec2.sh ec2-user@<EC2_IP>:~
-ssh ec2-user@<EC2_IP> './setup-ec2.sh'
+scp -i ors-key.pem deploy/ec2/setup-ec2.sh ubuntu@54.253.77.235:~
+ssh -i ors-key.pem ubuntu@54.253.77.235 './setup-ec2.sh'
 ```
 
 ### Step 3: Login to Docker Registry on EC2
 
 ```bash
-ssh ec2-user@<EC2_IP>
+ssh -i ors-key.pem ubuntu@54.253.77.235
 docker login
 ```
 
 ### Step 4: Copy Deployment Files
 
 ```bash
-scp deploy/ec2/deploy-ec2.sh deploy/ec2/docker-compose.prod.yml ec2-user@<EC2_IP>:~/ors-app/
+scp -i ors-key.pem deploy/ec2/deploy-ec2.sh deploy/ec2/docker-compose.prod.yml ubuntu@54.253.77.235:~/ors-app/
 ```
 
 ### Step 5: Configure Environment
 
 ```bash
-ssh ec2-user@<EC2_IP>
+ssh -i ors-key.pem ubuntu@54.253.77.235
 nano ~/ors-app/.env
-# Set DOCKER_USERNAME, NEXT_PUBLIC_BASE_API=http://<EC2_IP>:8080, passwords, etc.
+# Set DOCKER_USERNAME, NEXT_PUBLIC_BASE_API=http://54.253.77.235:8080, passwords, etc.
 ```
 
 ### Step 6: Deploy
