@@ -31,8 +31,7 @@ Database Management System
 
 School of Applied Digital Technology, Mae Fah Luang University
 
+## Demo Link - [Occupancy Room System](https://occupacyroom.app/)
 
-## Demo
 
-[https://occupacyroom.app/]
 
