@@ -7,14 +7,6 @@ on:
         description: 'Docker image tag (defaults to commit SHA)'
         required: false
         default: ''
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - 'README.md'
-      - 'doc/**'
-      - 'api-doc/**'
-      - 'instruction/**'
 
 concurrency:
   group: deploy-ec2-${{ github.ref }}
